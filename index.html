@@ -1294,6 +1294,16 @@ function collectData(){
 }
 function applyData(data){
   if(!data||typeof data!=='object')return false;
+  // Mapování alternativních názvů polí (kompatibilita s podklady přípraváře)
+  var ALIAS={
+    'm_str_pl':'m_pstr','chk-str_pl':'chk-pstr',   // plochá střecha
+    's_str_pl':'s_pstr'
+  };
+  Object.keys(ALIAS).forEach(function(old){
+    if(data.hasOwnProperty(old)&&!data.hasOwnProperty(ALIAS[old])){
+      data[ALIAS[old]]=data[old];
+    }
+  });
   Object.keys(data).forEach(function(id){
     var el=g(id);if(!el)return;
     var v=data[id];
@@ -1466,6 +1476,13 @@ function exportWord(){
   +'<p style="margin:0;font-size:8pt;color:#ffd0d0">CELKOVÁ ÚSPORA NA ÚROCÍCH – SCÉNÁŘ 3 (NZÚ ÚVĚR 2026 + BANKA) VS SCÉNÁŘ 1 (BANKA BEZ NZÚ)</p>'
   +'<p style="margin:3pt 0 0 0;font-size:18pt;font-weight:bold;color:#ffffff">'+f(r.usp13)+'</p>'
   +'<p style="margin:2pt 0 0 0;font-size:8pt;color:#ffd0d0">za '+r.splatB+' let'+(vtChecked[1]?' | původní NZÚ dotace vs banka: +'+f(r.usp12):'')+'</p>'
+  +'</td></tr></table>':'')
+
+  // ── Co stát hradí za klienta (0% úrok na NZÚ úvěru)
+  +(r.statHradi>0?'<table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin-top:8pt"><tr><td style="background:#edf9f0;border:1.5pt solid #1e7e34;padding:10pt 14pt;border-collapse:collapse">'
+  +'<p style="margin:0;font-size:8pt;font-weight:bold;color:#1e7e34;text-transform:uppercase">💚 Co za vás hradí stát díky bezúročnému NZÚ úvěru</p>'
+  +'<p style="margin:4pt 0 0 0;font-size:16pt;font-weight:bold;color:#1e7e34">'+f(r.statHradi)+'</p>'
+  +'<p style="margin:3pt 0 0 0;font-size:8.5pt;color:#555555">Tolik byste na úrocích zaplatili, kdybyste si NZÚ částku '+f(r.dotaceNzu)+' půjčili u banky za '+f2(r.urokB)+' % p.a. na '+r.splatNzu+' let. U NZÚ úvěru 2026 je sazba 0 % — celý tento úrok hradí Fond životního prostředí za vás. Přeplatek u komerčního úvěru by činil '+f2(r.statPreplatekPct)+' % z jistiny (měsíční splátka cca '+f(r.statSplatkaKom)+' Kč).</p>'
   +'</td></tr></table>':'')
 
   // ── Detailní tabulka
@@ -1771,6 +1788,13 @@ function buildResults(p){
   var usp13=S1u-S3u;
   var minU=Math.min(S1u,S2u,S3u);
 
+  // ─── CO STÁT FAKTICKY HRADÍ ZA KLIENTA (úrok na 0% NZÚ úvěru) ───
+  // Úrok, který by klient zaplatil, kdyby NZÚ částku čerpal u banky
+  // za běžnou sazbu na dobu splatnosti NZÚ. U NZÚ = 0 %, rozdíl hradí Fond.
+  var statHradi=totInt(dotaceNzu,urokB,splatNzu);
+  var statSplatkaKom=ann(dotaceNzu,urokB,splatNzu); // hypotetická splátka komerčně
+  var statPreplatekPct=dotaceNzu>0?(statHradi/dotaceNzu*100):0;
+
   // ─── ROZPAD NA FÁZI „PO DOBU NZÚ" A „PO ZBÝVAJÍCÍ DOBU" ────
   function payS1(y){return y<=splatB?S1s:0;}
   function payS2(y){return y<=puvodniSplat?S2s:0;}
@@ -1794,7 +1818,8 @@ function buildResults(p){
     S2j:S2j,S2s:S2s,S2u:S2u,S2avg:S2avg,
     S3j:S3j,S3s:S3s,S3u:S3u,S3avg:S3avg,S3nzuJ:S3nzuJ,S3nzuS:S3nzuS,S3bankJ:S3bankJ,S3bankS:S3bankS,S3bankU:S3bankU,
     usp12:usp12,usp13:usp13,maxYrs:maxYrs,
-    ph1y:ph1y,ph2y:ph2y,phS1:phS1,phS2:phS2,phS3:phS3};
+    ph1y:ph1y,ph2y:ph2y,phS1:phS1,phS2:phS2,phS3:phS3,
+    statHradi:statHradi,statSplatkaKom:statSplatkaKom,statPreplatekPct:statPreplatekPct};
 
   // ─── METRIKY ───────────────────────────────────────────────
   var kompH=komplex
@@ -1808,7 +1833,8 @@ function buildResults(p){
     +'<div class="met nn"><div class="ml">Bankovní dofinancování</div><div class="mv">'+fmtK(S3bankJ)+'</div><div class="ms">'+fmtD(urokB,2).replace('.',',')+' %, '+splatB+' let</div></div>'
     +'<div class="met gg"><div class="ml">FO/byt/měsíc (scén. 3)</div><div class="mv">'+fmtK(S3s*fac/bytu)+'</div><div class="ms">'+fmtD(S3s*fac/totalM2,2)+' Kč/m²/měs. | vč. rezervy '+foRez+' %</div></div>'
     +bonusH+kompH
-    +'<div class="met rr"><div class="ml">Úspora úroků (scén. 3 vs 1)</div><div class="mv">'+fmtK(usp13)+'</div><div class="ms">za '+splatB+' let</div></div>';
+    +'<div class="met rr"><div class="ml">Úspora úroků (scén. 3 vs 1)</div><div class="mv">'+fmtK(usp13)+'</div><div class="ms">za '+splatB+' let</div></div>'
+    +'<div class="met gg"><div class="ml">Stát hradí za klienta (0 % úrok)</div><div class="mv">'+fmtK(statHradi)+'</div><div class="ms">úrok z '+fmtK(dotaceNzu)+' za '+splatNzu+' let | jinak '+fmtD(urokB,2).replace('.',',')+' % p.a.</div></div>';
 
   // ─── SROVNÁVACÍ KARTY ──────────────────────────────────────
   var vtChecked=[
