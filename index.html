@@ -545,6 +545,7 @@ input[type=range].yr-range::-moz-range-thumb{width:20px;height:20px;border-radiu
     <div class="g2">
       <div class="f"><label>Počet nízkopříjmových bytů</label>
         <input type="number" id="nizko_b" value="0" min="0" step="1">
+        <input type="hidden" id="nizko_bonus_exact" value="">
         <div class="hint">Jen komplexní opatření</div>
       </div>
       <div class="nizko-box"><div class="nz-l">Odhadovaný bonus</div><div class="nz-v" id="nizko-val">–</div></div>
@@ -1156,7 +1157,7 @@ function updateTotZat(){
     updateFveCard(); updateTogVals(); updateNzuSummary(); saveState();
   });
 });
-['tc_bytu','tuv_bytu','nizko_b'].forEach(function(id){
+['tc_bytu','tuv_bytu','nizko_b','bytu_ob'].forEach(function(id){
   var el=g(id);
   if(el) el.addEventListener('input',function(){
     updateTogVals(); updateNzuSummary(); saveState();
@@ -1178,7 +1179,7 @@ g('komplet-ok').addEventListener('change',function(){
   if(calcedNzu>0) buildResults(lastP);
   saveState();
 });
-g('nzu_man').addEventListener('input',function(){checkNzuWarn();if(calcedNzu>0)buildResults(lastP);saveState();});
+g('nzu_man').addEventListener('input',function(){checkNzuWarn();enforceSplatCap(gv('nzu_man')||calcedNzu);if(calcedNzu>0)buildResults(lastP);saveState();});
 
 function syncM2(){
   var b=gv('bytu');
@@ -1186,6 +1187,45 @@ function syncM2(){
 }
 
 // ── LIMIT CALC ────────────────────────────────────────────────
+// ── BONUS §3.4.1 ──────────────────────────────────────────────
+// Vrací celkový nízkopříjmový bonus. Pokud byla z decilové záložky
+// přenesena přesná částka (podle skutečných ploch bytů) a počet bytů
+// stále odpovídá přenosu, použije ji. Jinak fallback na počet × 120 000.
+function bonusCelkVal(nizkoB,komplex){
+  if(!komplex||nizkoB<=0)return 0;
+  var fx=g('nizko_bonus_exact');
+  if(fx&&fx.value!==''){
+    var parts=String(fx.value).split(':'); // formát "počet:částka"
+    var cnt=parseFloat(parts[0]), sum=parseFloat(parts[1]);
+    if(!isNaN(cnt)&&!isNaN(sum)&&cnt===nizkoB&&sum>0) return sum;
+  }
+  return nizkoB*Math.min(60,60)*2000; // 120 000/byt (fixně 60 m²)
+}
+
+// ── SPLATNOST CAP §2.3 (do 1,5 mil → max 10 let, nad → max 15 let) ──
+function enforceSplatCap(loanAmt){
+  var maxTerm=(loanAmt>1500000)?15:10;
+  var sl=g('splat_nzu');
+  if(sl){
+    if(+sl.max!==maxTerm){
+      sl.max=maxTerm;
+      var tk=g('splat_nzu_ticks');
+      if(tk){var sp15=Array.prototype.filter.call(tk.querySelectorAll('span'),function(s){return s.textContent.trim()==='15';})[0];
+        if(sp15)sp15.style.visibility=(maxTerm<15)?'hidden':'';}
+    }
+    if(+sl.value>maxTerm){
+      sl.value=maxTerm;
+      sl.dispatchEvent(new Event('input',{bubbles:true}));
+    }
+  }
+  var info=g('splat-info');
+  if(info){
+    info.textContent='ℹ '+((loanAmt>1500000)
+      ?'Doporučená a maximální splatnost NZÚ: 15 let (úvěr nad 1 500 000 Kč, §2.3c)'
+      :'Maximální splatnost NZÚ: 10 let (úvěr do 1 500 000 Kč, §2.3c)')+'.';
+  }
+}
+
 function getLimit(){
   var bytu=gv('bytu_ob')||gv('bytu')||1;
   var k=g('typ').value==='komplex';
@@ -1264,16 +1304,14 @@ function updateNzuSummary(){
   if(gv('nzu_man')===0) sv('nzu_man',Math.round(d.uzn));
   checkNzuWarn();
 
-  // Splatnost info
-  var uzn=d.uzn;
-  var splRec=(uzn>1500000)?'Doporučená splatnost NZÚ: max 15 let (úvěr nad 1 500 000 Kč, §2.3c)':'Doporučená splatnost NZÚ: max 10 let (úvěr do 1 500 000 Kč, §2.3c)';
-  g('splat-info').textContent='ℹ '+splRec+'.';
+  // Splatnost info + enforcement §2.3 (cap dle FINÁLNÍ výše úvěru)
+  enforceSplatCap(gv('nzu_man')||d.uzn);
 
   // Nízkopříjmový bonus
   var nizkoB=gv('nizko_b');
   var komplex=L.k&&L.komplet;
   var bonusByt=komplex?Math.min(avgM2,60)*2000:0;
-  var bonusCelk=komplex?nizkoB*bonusByt:0;
+  var bonusCelk=bonusCelkVal(nizkoB,komplex);
   g('nizko-val').textContent=komplex&&nizkoB>0?fmtK(bonusCelk):(komplex?'0 Kč':'Jen komplexní');
   g('nizko-panel').style.opacity=komplex?'1':'0.5';
   if(nizkoB>0&&komplex){
@@ -1736,7 +1774,7 @@ function calculate(){
   var splatNzu=+g('splat_nzu').value;
   var urokNzu=gv('urok_nzu');
   var nizkoB=gv('nizko_b');
-  var bonusCelk=komplex?nizkoB*Math.min(avgM2,60)*2000:0;
+  var bonusCelk=bonusCelkVal(nizkoB,komplex);
   var puvodniDot=gv('puvodni_dot');
   var puvodniSplat=+g('puvodni_splat').value;
 
@@ -2096,8 +2134,9 @@ function saveDecilList(){
   try{localStorage.setItem('nzu_decil_list_v1',JSON.stringify(decilList));}catch(e){}
 }
 function getTotalBytu(){
-  var el=document.getElementById('bytu')||document.getElementById('bytu_ob');
-  var v=el?parseInt(el.value,10):0;
+  var ob=document.getElementById('bytu_ob');
+  var pr=document.getElementById('bytu');
+  var v=(ob?parseInt(ob.value,10):0)||(pr?parseInt(pr.value,10):0)||0;
   return (v>0)?v:0;
 }
 
@@ -2517,7 +2556,11 @@ function init(){
 
   dq('dec-transfer-btn').addEventListener('click',function(){
     var f=document.getElementById('nizko_b');
-    var yesCount=decilList.filter(function(it){return it.eligible!==false;}).length;
+    var yesItems=decilList.filter(function(it){return it.eligible!==false;});
+    var yesCount=yesItems.length;
+    var bonusExact=yesItems.reduce(function(s,it){return s+calcBonus(it.plocha||60);},0);
+    var fx=document.getElementById('nizko_bonus_exact');
+    if(fx) fx.value=yesCount+':'+bonusExact;
     if(f){
       f.value=yesCount;
       f.dispatchEvent(new Event('input',{bubbles:true}));
