@@ -3877,7 +3877,7 @@ var COLS=[
   {k:'pct',l:'%'},{k:'nakl',l:'Náklad společ.'},{k:'ex',l:'Vícenáklady'},
   {k:'foP',l:'− FO'},{k:'dotP',l:'− Dotace'},{k:'niz',l:'Nízkopř.'},{k:'vklad',l:'− Vklad'},
   {k:'zbytek',l:'Zbytek (úvěr)'},{k:'nzuP',l:'Úvěr NZÚ 0 %'},{k:'bankP',l:'Úvěr banka'},{k:'share',l:'Podíl úvěru'},{k:'splN',l:'Spl. NZÚ 0 %'},{k:'splB',l:'Spl. banka'},
-  {k:'rez',l:'Rezerva'},{k:'novy1',l:'FO 1. fáze'},{k:'novy2',l:'FO 2. fáze'},{k:'souc',l:'Souč. FO'},{k:'navys',l:'Navýšení'},{k:'uspVyt',l:'Úspora na vytápění'},{k:'penezenka',l:'Z vlastní peněženky'}
+  {k:'rez',l:'Rezerva'},{k:'novy1',l:'FO 1. fáze'},{k:'novy2',l:'FO 2. fáze'},{k:'souc',l:'Souč. FO'},{k:'uspVyt',l:'Úspora na byt'},{k:'navys',l:'Navýšení'},{k:'penezenka',l:'Z vlastní peněženky'}
 ];
 function V(k){return !(st.hcols&&st.hcols[k]);}
 function render(){
@@ -3918,8 +3918,8 @@ function render(){
     +(V('novy1')?'<th>FO 1.–'+fin.y1+'. rok</th>':'')
     +(V('novy2')?'<th>FO '+(fin.y1+1)+'.–'+fin.y2+'. rok</th>':'')
     +(V('souc')?'<th>Souč. FO</th>':'')
+    +(V('uspVyt')?'<th>Úspora na byt/měs</th>':'')
     +(V('navys')?'<th>Navýšení</th>':'')
-    +(V('uspVyt')?'<th>− Úspora na vytápění</th>':'')
     +(V('penezenka')?'<th>Z vlastní peněženky</th>':'')
     +'<th></th></tr></thead><tbody>';
   var visCols=3+1
@@ -3952,8 +3952,8 @@ function render(){
       +(V('novy1')?'<td data-cc="novy1" class="pos"><b>'+fmt(r.novy1)+'</b></td>':'')
       +(V('novy2')?'<td data-cc="novy2">'+fmt(r.novy2)+'</td>':'')
       +(V('souc')?'<td data-cc="souc">'+fmt(r.souc)+'</td>':'')
-      +(V('navys')?'<td data-cc="navys" class="'+(r.navys>0?'neg':'pos')+'"><b>'+(r.navys>0?'+':'')+fmt(r.navys)+'</b></td>':'')
       +(V('uspVyt')?'<td data-cc="uspVyt" class="'+(r.uspVyt>0?'pos':'')+'">'+(r.uspVyt>0?'−'+fmt(r.uspVyt):'—')+'</td>':'')
+      +(V('navys')?'<td data-cc="navys" class="'+(r.navys>0?'neg':'pos')+'"><b>'+(r.navys>0?'+':'')+fmt(r.navys)+'</b></td>':'')
       +(V('penezenka')?'<td data-cc="penezenka" class="'+(r.penezenka>0?'neg':'pos')+'"><b>'+(r.penezenka>0?'+':'')+fmt(r.penezenka)+'</b></td>':'')
       +'<td><button class="fo-del" data-del="'+u.id+'" title="odebrat byt z výpočtu">✕</button></td>'
       +'</tr>';
@@ -3982,8 +3982,8 @@ function render(){
       +(V('novy1')?'<td data-fc="novy1">'+fmt(sum('novy1'))+'</td>':'')
       +(V('novy2')?'<td data-fc="novy2">'+fmt(sum('novy2'))+'</td>':'')
       +(V('souc')?'<td data-fc="souc">'+fmt(sum('souc'))+'</td>':'')
-      +(V('navys')?'<td data-fc="navys">'+fmt(sum('navys'))+'</td>':'')
       +(V('uspVyt')?'<td data-fc="uspVyt">'+(sum('uspVyt')>0?'−'+fmt(sum('uspVyt')):'—')+'</td>':'')
+      +(V('navys')?'<td data-fc="navys">'+fmt(sum('navys'))+'</td>':'')
       +(V('penezenka')?'<td data-fc="penezenka">'+fmt(sum('penezenka'))+'</td>':'')
       +'<td></td></tr></tfoot>';
   }
@@ -4313,7 +4313,7 @@ function exportFo(pdf){
   var showDot=fin.dot>0;
   var thead='<tr><th>Byt</th><th style="text-align:left">Vlastník</th><th>Podíl %</th><th>Náklad společ.</th>'
     +ex.map(function(e){return '<th>'+esc(e.name)+'</th>';}).join('')
-    +'<th>FO</th>'+(showDot?'<th>Dotace</th>':'')+'<th>Nízkopř. dotace</th><th>Vklad</th><th>Zbytek (úvěr)</th><th>Úvěr NZÚ 0 %</th><th>Úvěr banka</th><th>Podíl úvěru %</th><th>Spl. NZÚ 0 %</th><th>Spl. banka</th><th>Rezerva/měs</th><th>FO 1.–'+fin.y1+'. rok</th><th>FO '+(fin.y1+1)+'.–'+fin.y2+'. rok</th><th>Souč. FO</th><th>Navýšení</th>'+(fin.uspora>0?'<th>− Úspora na vytápění</th><th>Z vlastní peněženky</th>':'')+'</tr>';
+    +'<th>FO</th>'+(showDot?'<th>Dotace</th>':'')+'<th>Nízkopř. dotace</th><th>Vklad</th><th>Zbytek (úvěr)</th><th>Úvěr NZÚ 0 %</th><th>Úvěr banka</th><th>Podíl úvěru %</th><th>Spl. NZÚ 0 %</th><th>Spl. banka</th><th>Rezerva/měs</th><th>FO 1.–'+fin.y1+'. rok</th><th>FO '+(fin.y1+1)+'.–'+fin.y2+'. rok</th><th>Souč. FO</th>'+(fin.uspora>0?'<th>Úspora na byt/měs</th>':'')+'<th>Navýšení</th>'+(fin.uspora>0?'<th>Z vlastní peněženky</th>':'')+'</tr>';
   var tbody=C.rows.map(function(r){
     return '<tr><td style="text-align:center">'+esc(r.u.c)+'</td><td style="text-align:left">'+esc(r.u.vl)+'</td><td>'+fmtP(r.pod)+'</td><td>'+fmt(r.nakl)+'</td>'
       +ex.map(function(e){var v=(e.mode==='exact')?(parseFloat(e.map[r.u.id])||0):(function(){var cnt=st.units.filter(function(x){return e.map[x.id];}).length;return cnt>0&&e.map[r.u.id]?(parseFloat(e.cena)||0)/cnt:0;})();return '<td>'+fmt(v)+'</td>';}).join('')
@@ -4321,13 +4321,14 @@ function exportFo(pdf){
       +'<td style="font-weight:bold">'+fmt(r.zbytek)+'</td><td>'+fmt(r.nzuPrin)+'</td><td>'+fmt(r.bankPrin)+'</td><td>'+fmtP(r.share)+'</td>'
       +'<td>'+fmt(r.splN)+'</td><td>'+fmt(r.splB)+'</td><td>'+fmt(r.rez)+'</td>'
       +'<td style="font-weight:bold;color:#1e7e34">'+fmt(r.novy1)+'</td><td>'+fmt(r.novy2)+'</td><td>'+fmt(r.souc)+'</td>'
+      +(fin.uspora>0?'<td style="color:#1e7e34">−'+fmt(r.uspVyt)+'</td>':'')
       +'<td style="font-weight:bold;color:'+(r.navys>0?'#a00000':'#1e7e34')+'">'+(r.navys>0?'+':'')+fmt(r.navys)+'</td>'
-      +(fin.uspora>0?'<td style="color:#1e7e34">−'+fmt(r.uspVyt)+'</td><td style="font-weight:bold;color:'+(r.penezenka>0?'#a00000':'#1e7e34')+'">'+(r.penezenka>0?'+':'')+fmt(r.penezenka)+'</td>':'')
+      +(fin.uspora>0?'<td style="font-weight:bold;color:'+(r.penezenka>0?'#a00000':'#1e7e34')+'">'+(r.penezenka>0?'+':'')+fmt(r.penezenka)+'</td>':'')
       +'</tr>';
   }).join('')
   +'<tr style="background:#fff5f5;font-weight:bold"><td></td><td style="text-align:left">CELKEM ('+C.rows.length+' bytů)</td><td>'+fmtP(C.rows.reduce(function(a,r){return a+r.pod;},0))+'</td><td>'+fmt(sum('nakl'))+'</td>'
   +ex.map(function(){return '<td></td>';}).join('')
-  +'<td>'+fmt(sum('foP'))+'</td>'+(showDot?'<td>'+fmt(sum('dotP'))+'</td>':'')+'<td>'+fmt(sum('niz'))+'</td><td>'+fmt(sum('vklad'))+'</td><td>'+fmt(C.sumZ)+'</td><td>'+fmt(sum('nzuPrin'))+'</td><td>'+fmt(sum('bankPrin'))+'</td><td></td><td>'+fmt(sum('splN'))+'</td><td>'+fmt(sum('splB'))+'</td><td>'+fmt(sum('rez'))+'</td><td>'+fmt(sum('novy1'))+'</td><td>'+fmt(sum('novy2'))+'</td><td>'+fmt(sum('souc'))+'</td><td>'+fmt(sum('navys'))+'</td>'+(fin.uspora>0?'<td>−'+fmt(sum('uspVyt'))+'</td><td>'+fmt(sum('penezenka'))+'</td>':'')+'</tr>';
+  +'<td>'+fmt(sum('foP'))+'</td>'+(showDot?'<td>'+fmt(sum('dotP'))+'</td>':'')+'<td>'+fmt(sum('niz'))+'</td><td>'+fmt(sum('vklad'))+'</td><td>'+fmt(C.sumZ)+'</td><td>'+fmt(sum('nzuPrin'))+'</td><td>'+fmt(sum('bankPrin'))+'</td><td></td><td>'+fmt(sum('splN'))+'</td><td>'+fmt(sum('splB'))+'</td><td>'+fmt(sum('rez'))+'</td><td>'+fmt(sum('novy1'))+'</td><td>'+fmt(sum('novy2'))+'</td><td>'+fmt(sum('souc'))+'</td>'+(fin.uspora>0?'<td>−'+fmt(sum('uspVyt'))+'</td>':'')+'<td>'+fmt(sum('navys'))+'</td>'+(fin.uspora>0?'<td>'+fmt(sum('penezenka'))+'</td>':'')+'</tr>';
   var params='<table class="in"><tr><td>Adresa domu</td><td style="font-weight:bold">'+(adr||'—')+'</td></tr>'
     +'<tr><td>SoD – společná část</td><td>'+fmt(fin.sod)+' Kč</td></tr>'
     +(ex.length?'<tr><td>Vícenáklady</td><td>'+ex.map(function(e){return esc(e.name)+(e.sup===false?' (nepodporované – jen banka)':' (NZÚ 0 %)');}).join(', ')+'</td></tr>':'')
@@ -4553,12 +4554,12 @@ function exportFoXlsx(){
   var hr=19; // o řádek níž – nad tabulkou zůstane mezera po parametrech (A5:B17)
   var heads=['Byt','Vlastník','Podíl','%','Náklad společ.'];
   ex.forEach(function(e){heads.push(e.name+(e.sup===false?' (banka)':' (NZÚ)'));});
-  heads.push('Σ Vícenáklady','− Fond oprav','− Dotace','Nízkopř. dotace','− Vklad','Zbytek podpor. (NZÚ)','Zbytek nepodpor. (banka)','Zbytek celkem','Podíl NZÚ','Jistina NZÚ 0 %','Jistina banka','Spl. NZÚ 0 %','Spl. banka','Rezerva','FO 1.–'+fin.y1+'. rok','FO '+(fin.y1+1)+'.–'+fin.y2+'. rok','Současný FO','Navýšení','− Úspora na vytápění','Z vlastní peněženky');
+  heads.push('Σ Vícenáklady','− Fond oprav','− Dotace','Nízkopř. dotace','− Vklad','Zbytek podpor. (NZÚ)','Zbytek nepodpor. (banka)','Zbytek celkem','Podíl NZÚ','Jistina NZÚ 0 %','Jistina banka','Spl. NZÚ 0 %','Spl. banka','Rezerva','FO 1.–'+fin.y1+'. rok','FO '+(fin.y1+1)+'.–'+fin.y2+'. rok','Současný FO','Úspora na byt/měs','Navýšení','Z vlastní peněženky');
   heads.forEach(function(t,i){
     var un=(i>=5&&i<5+nE&&ex[i-5].sup===false);
     S(colL(i)+hr,t,un?ST.thUn:ST.th);
   });
-  var iExS=5+nE,iFO=6+nE,iDot=7+nE,iNiz=8+nE,iVkl=9+nE,iPn=10+nE,iNn=11+nE,iZby=12+nE,iSh=13+nE,iJN=14+nE,iBk=15+nE,iSN=16+nE,iSB=17+nE,iRez=18+nE,iF1=19+nE,iF2=20+nE,iSc=21+nE,iNv=22+nE,iUv=23+nE,iPz=24+nE;
+  var iExS=5+nE,iFO=6+nE,iDot=7+nE,iNiz=8+nE,iVkl=9+nE,iPn=10+nE,iNn=11+nE,iZby=12+nE,iSh=13+nE,iJN=14+nE,iBk=15+nE,iSN=16+nE,iSB=17+nE,iRez=18+nE,iF1=19+nE,iF2=20+nE,iSc=21+nE,iUv=22+nE,iNv=23+nE,iPz=24+nE;
   var eligC=[],unC=[];
   ex.forEach(function(e,j){(e.sup===false?unC:eligC).push(colL(5+j));});
   var n=C.rows.length,first=hr+1,last=hr+n,tot=last+1;
@@ -4594,8 +4595,8 @@ function exportFoXlsx(){
     Ff(colL(iF1)+row,colL(iSN)+row+'+'+colL(iSB)+row+'+'+colL(iRez)+row,M,ST.tdG);
     Ff(colL(iF2)+row,'IF($B$13>$B$9,'+colL(iSB)+row+','+colL(iSN)+row+')+'+colL(iRez)+row,M,td);
     Ff(colL(iSc)+row,'C'+row+'*$B$16',M,td);
-    Ff(colL(iNv)+row,colL(iF1)+row+'-'+colL(iSc)+row,M,tdB);
     Ff(colL(iUv)+row,'C'+row+'*$B$17',M,td);
+    Ff(colL(iNv)+row,colL(iF1)+row+'-'+colL(iSc)+row,M,tdB);
     Ff(colL(iPz)+row,colL(iNv)+row+'-'+colL(iUv)+row,M,tdB);
   });
   S('A'+tot,'',ST.tot);
@@ -4604,11 +4605,11 @@ function exportFoXlsx(){
   Ff(colL(3)+tot,'C'+tot,'0.00%',ST.tot);
   var sumCols=[4];
   ex.forEach(function(e,j){sumCols.push(5+j);});
-  [iExS,iFO,iDot,iNiz,iVkl,iPn,iNn,iZby,iJN,iBk,iSN,iSB,iRez,iF1,iF2,iSc,iNv,iUv,iPz].forEach(function(ci){sumCols.push(ci);});
+  [iExS,iFO,iDot,iNiz,iVkl,iPn,iNn,iZby,iJN,iBk,iSN,iSB,iRez,iF1,iF2,iSc,iUv,iNv,iPz].forEach(function(ci){sumCols.push(ci);});
   sumCols.forEach(function(ci){Ff(colL(ci)+tot,'SUM('+colL(ci)+first+':'+colL(ci)+last+')',M,ST.tot);});
   Ff(colL(iSh)+tot,'SUM('+colL(iSh)+first+':'+colL(iSh)+last+')','0.00%',ST.tot);
   S('A'+(tot+2),'NZÚ 0 % lze čerpat jen na podporovaná opatření – FO a vklady kryjí nejdřív nepodporované vícenáklady. Nízkopříjmová dotace se odečítá výhradně z komerčního úvěru, bezúročný úvěr NZÚ zůstává ve stejné výši. Podíl NZÚ = podpor. zbytek / Σ podpor. Banka kryje zbytek vč. nepodporovaných. FO 1. fáze = obě splátky + rezerva; 2. fáze po splacení kratšího úvěru. Orientační výpočet – IP Polná s.r.o.',ST.note);
-  ws['!ref']='A1:'+colL(iNv)+(tot+2);
+  ws['!ref']='A1:'+colL(iPz)+(tot+2);
   var cols=[{wch:27},{wch:42},{wch:12},{wch:9},{wch:15}];
   ex.forEach(function(){cols.push({wch:14});});
   [15,14,13,14,12,16,16,14,11,14,14,13,13,12,15,15,13,13,16,16].forEach(function(wc){cols.push({wch:wc});});
