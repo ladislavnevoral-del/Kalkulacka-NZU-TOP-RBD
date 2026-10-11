@@ -1787,10 +1787,16 @@ function updateTotZat(){
 g('investice').addEventListener('input',function(){g('inv-disp').textContent=fmtK(gv('investice'));saveState();});
 g('fond').addEventListener('input',function(){g('fond-disp').textContent=fmtK(gv('fond'));saveState();});
 g('puvodni_dot').addEventListener('input',function(){g('puvodni-disp').textContent=fmtK(gv('puvodni_dot'));saveState();});
-g('typ').addEventListener('change',function(){updateKompletWarn();updateNzuSummary();saveState();});
-g('komplet-ok').addEventListener('change',function(){
+g('typ').addEventListener('change',function(){
+  var nm=g('nzu_man');if(nm)delete nm.dataset.user; // změna limitu → přepočítat finální výši
   updateKompletWarn();updateNzuSummary();
-  if(calcedNzu>0) buildResults(lastP);
+  if(calcedNzu>0)calculate();
+  saveState();
+});
+g('komplet-ok').addEventListener('change',function(){
+  var nm=g('nzu_man');if(nm)delete nm.dataset.user; // změna limitu → přepočítat finální výši
+  updateKompletWarn();updateNzuSummary();
+  if(calcedNzu>0) calculate();
   saveState();
 });
 g('nzu_man').addEventListener('input',function(){this.dataset.user='1';checkNzuWarn();enforceSplatCap(gv('nzu_man')||calcedNzu);if(calcedNzu>0)buildResults(lastP);saveState();});
@@ -1866,7 +1872,15 @@ function checkNzuWarn(){
   } else if(man>L.maxByt){
     g('nzu-man-warn').style.display='block';
     g('nzu-man-warn').textContent='⚠ Fin. výše NZÚ ('+fmtK(man)+') překračuje limit '+fmtK(L.maxByt)+'.';
-  } else g('nzu-man-warn').style.display='none';
+  } else {
+    // pojistka: finální výše neodpovídá vypočtené – ať to není tiché
+    var vyp=Math.round(calcNzu().uzn);
+    if(vyp>0&&Math.abs(man-vyp)>1){
+      g('nzu-man-warn').style.display='block';
+      g('nzu-man-warn').innerHTML='ℹ Používá se ručně zadaná výše '+fmtK(man)+', vypočteno je <b>'+fmtK(vyp)+'</b>. '
+        +'Tlačítkem <b>↓ Převzít</b> přepnete zpět na vypočtenou hodnotu.';
+    } else g('nzu-man-warn').style.display='none';
+  }
 }
 
 // ── NZÚ SUMMARY ───────────────────────────────────────────────
@@ -1968,6 +1982,10 @@ function applyData(data){
       if(ok)el.value=String(v);
     } else el.value=v;
   });
+  // finální výše NZÚ: načtení uložených dat samo o sobě není ruční zásah
+  var nmi=g('nzu_man');
+  var nmSaved=nmi?(parseFloat(nmi.value)||0):0;
+  if(nmi)delete nmi.dataset.user;
   ITEMS.forEach(function(it){
     var el=g('chk-'+it.id);if(!el)return;
     var row=g('togrow-'+it.id);
@@ -1978,6 +1996,14 @@ function applyData(data){
   });
   updateAllSubs();updateTotZat();updateFveCard();updateTogVals();
   updateKompletWarn();updateNzuSummary();
+  // uloženou finální výši bereme jako ruční jen tehdy, liší-li se od vypočtené
+  if(nmi&&nmSaved>0){
+    var dCalc=calcNzu();
+    if(Math.abs(nmSaved-Math.round(dCalc.uzn))>1){
+      sv('nzu_man',nmSaved);nmi.dataset.user='1';
+      updateNzuSummary();
+    }
+  }
   return true;
 }
 var _bkT=0;
@@ -3170,7 +3196,11 @@ document.addEventListener('click',function(e){
       var num=txt.replace(/[^0-9]/g,'');
       if(num){
         var el=document.getElementById('nzu_man');
-        if(el){el.value=num;el.dispatchEvent(new Event('input',{bubbles:true}));}
+        if(el){
+          el.value=num;
+          el.dispatchEvent(new Event('input',{bubbles:true}));
+          delete el.dataset.user;   // zpět na automatické sledování výpočtu
+        }
       }
     }
   }
