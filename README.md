@@ -36,6 +36,12 @@ Data žijí **pouze v prohlížeči** (localStorage). Po každé zakázce použi
 tlačítko **↓ Export** a soubor JSON si uložte – je to jediná záloha.
 Odznak v hlavičce hlídá, kdy jste zálohovali naposledy.
 
+Export JSON obsahuje **i naimportované byty** ze záložky *FO na byty*
+(blok `_fo_byty`: vlastníci, čísla bytů, podíly, bonusy, vklady, vícenáklady)
+a **uložené varianty** (`_varianty`). Import téhož souboru všechno obnoví,
+takže zakázku lze přenést na jiný počítač. Seznam bytů je v souboru rozepsaný
+po řádcích, takže se dá přečíst i upravit v textovém editoru.
+
 ## Nápověda
 
 Kompletní návod je přímo v aplikaci v záložce **❓ Nápověda**

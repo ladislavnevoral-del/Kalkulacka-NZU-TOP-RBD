@@ -1222,6 +1222,7 @@ table.fo-tbl td.neg{color:var(--red)}
       </span>
     </div>
     <div class="fo-twrap"><div id="fo-tbl-wrap"></div></div>
+    <div id="fo-save-ind" style="margin-top:6px;font-size:11px;color:var(--text3);opacity:.55;transition:opacity .3s;min-height:14px"></div>
     <div class="hint" style="margin-top:6px">Zbytek = náklad dle podílu + vícenáklady − FO − dotace − vklad − nízkopříjmová dotace. FO a vklad kryjí nejdřív nepodporované náklady; nízkopříjmová dotace snižuje výhradně komerční úvěr – bezúročný úvěr NZÚ zůstává ve stejné výši.</div>
   </div>
 
@@ -2001,6 +2002,9 @@ function updateNzuSummary(){
 }
 
 // ── PERSISTENCE ───────────────────────────────────────────────
+// Příznak „právě načítám stav" – brání tomu, aby dílčí moduly (FO na byty,
+// varianty) během načítání uložily hlavní stav s ještě nenaplněnými políčky.
+var _applying=false;
 function collectData(){
   var data={};
   document.querySelectorAll('input[id],select[id]').forEach(function(el){
@@ -2009,11 +2013,25 @@ function collectData(){
     data[el.id]=(el.type==='checkbox')?el.checked:el.value;
   });
   if(window.nzuFoGet){try{data['_fo_byty']=window.nzuFoGet();}catch(e){}}
+  try{data['_varianty']=varLoad();}catch(e){}
   return data;
 }
-function applyData(data){
+// Načtení stavu – `fromFile` = uživatel vědomě importoval soubor JSON.
+// Jen tehdy smí načtená data vymazat už zadané byty/varianty; u automatického
+// načtení z prohlížeče se prázdný snímek ignoruje, aby nepřepsal platná data.
+function applyData(data,fromFile){
+  _applying=true;
+  try{return applyDataInner(data,fromFile);}
+  finally{_applying=false;try{saveState();}catch(e){}}
+}
+function applyDataInner(data,fromFile){
   if(!data||typeof data!=='object')return false;
-  if(data['_fo_byty']&&window.nzuFoSet){try{window.nzuFoSet(data['_fo_byty']);}catch(e){}}
+  if(data['_fo_byty']&&window.nzuFoSet){try{window.nzuFoSet(data['_fo_byty'],!!fromFile);}catch(e){}}
+  if(Array.isArray(data['_varianty'])){
+    try{
+      if(data['_varianty'].length||fromFile){varStore(data['_varianty']);if(g('var-list'))varRender();}
+    }catch(e){}
+  }
   // Mapování alternativních názvů polí (kompatibilita s podklady přípraváře)
   var ALIAS={
     'm_str_pl':'m_pstr','chk-str_pl':'chk-pstr',   // plochá střecha
@@ -2067,6 +2085,10 @@ function saveState(){
     if(ind){ind.style.opacity='1';clearTimeout(ind._t);ind._t=setTimeout(function(){ind.style.opacity='0';},2000);}
   }catch(e){}
 }
+// Dílčí moduly (FO na byty, varianty) tím hlásí, že změnily svá data –
+// hlavní stav se musí uložit hned, jinak by při příštím spuštění obsahoval
+// zastaralý snímek a ten by naimportované byty přepsal.
+window.nzuSaveState=function(){if(_applying)return;try{saveState();}catch(e){}};
 function loadState(){
   try{
     var raw=localStorage.getItem(SK);
@@ -2480,7 +2502,10 @@ function exportPdf(){
 // ── VARIANTY ZAKÁZKY ─────────────────────────────────────────
 var VK='nzu_varianty_v1';
 function varLoad(){try{return JSON.parse(localStorage.getItem(VK))||[];}catch(e){return [];}}
-function varStore(a){try{localStorage.setItem(VK,JSON.stringify(a));}catch(e){alert('Varianty se nepodařilo uložit (plná paměť prohlížeče).');}}
+function varStore(a){
+  try{localStorage.setItem(VK,JSON.stringify(a));}catch(e){alert('Varianty se nepodařilo uložit (plná paměť prohlížeče).');}
+  if(window.nzuSaveState)window.nzuSaveState();
+}
 function varSummary(){
   var d=calcNzu();
   var nzu=gv('nzu_man')||d.uzn;
@@ -2767,6 +2792,8 @@ function exportData(){
     'chk-fve':            'Zahrnout FVE fotovoltaiku do NZÚ (true/false)',
     'chk-tc':             'Zahrnout TČ vzduch-voda do NZÚ (true/false)',
     'chk-tuv':            'Zahrnout přípravu TUV do NZÚ (true/false)',
+    '_fo_byty':           'ZÁLOHA ZÁLOŽKY „FO NA BYTY" – vlastníci, čísla bytů, spoluvlastnické podíly, nízkopříjmové bonusy, osobní vklady a vícenáklady. Tento blok obsahuje všechny naimportované byty z katastru, takže import tohoto souboru je obnoví.',
+    '_varianty':          'ZÁLOHA ULOŽENÝCH VARIANT ZAKÁZKY – seznam variant ze záložky Varianty.',
   };
 
   // Build annotated JSON manually – each value on its own line with inline comment
@@ -2775,9 +2802,22 @@ function exportData(){
   keys.forEach(function(k,i){
     var v=data[k];
     var comma=i<keys.length-1?',':'';
-    var val=JSON.stringify(v);
     var note=POPIS[k]?'   // '+POPIS[k]:'';
-    lines.push('  '+JSON.stringify(k)+': '+val+comma+note);
+    // Byty rozepsat po řádcích – aby byl seznam vlastníků v souboru čitelný
+    // a dal se případně upravit i ručně v textovém editoru.
+    if(k==='_fo_byty'&&v&&v.units){
+      lines.push('  '+JSON.stringify(k)+': {'+note);
+      lines.push('    "seq": '+JSON.stringify(v.seq||1)+',');
+      lines.push('    "units": [        // jeden byt na řádek: c = číslo bytu, vl = vlastník, pod = spoluvlastnický podíl');
+      v.units.forEach(function(u,j){
+        lines.push('      '+JSON.stringify(u)+(j<v.units.length-1?',':''));
+      });
+      lines.push('    ],');
+      lines.push('    "extras": '+JSON.stringify(v.extras||[])+'        // vícenáklady na jednotlivé byty');
+      lines.push('  }'+comma);
+      return;
+    }
+    lines.push('  '+JSON.stringify(k)+': '+JSON.stringify(v)+comma+note);
   });
   lines.push('}');
   var json=lines.join('\n');
@@ -2809,7 +2849,10 @@ function importData(file){
         }
         return line;
       }).join('\n');
-      applyData(JSON.parse(clean));saveState();
+      var obj=JSON.parse(clean);
+      applyData(obj,true);saveState();
+      var nb=obj&&obj['_fo_byty']&&obj['_fo_byty'].units?obj['_fo_byty'].units.length:0;
+      if(nb&&window.refreshFoTab)window.refreshFoTab();
       var ind=g('save-ind');if(ind){ind.style.opacity='1';clearTimeout(ind._t);ind._t=setTimeout(function(){ind.style.opacity='0';},3000);}
     }catch(err){alert('Chyba při importu souboru: '+err.message);}
   };
@@ -3868,8 +3911,26 @@ function parsePodil(t){
   var v=parseFloat(t);
   return isNaN(v)?0:v/100; // procenta
 }
-function save(){try{localStorage.setItem(FK,JSON.stringify(st));}catch(e){}}
+function save(){
+  var ok=true;
+  try{localStorage.setItem(FK,JSON.stringify(st));}catch(e){ok=false;}
+  // ohlásit hlavní části, aby si uložila aktuální snímek bytů do svého stavu
+  // i do exportu JSON (jinak by měla zastaralý a při dalším spuštění by byty přepsala)
+  if(window.nzuSaveState)window.nzuSaveState();
+  showFoSaved(ok);
+  return ok;
+}
 function load(){try{var r=localStorage.getItem(FK);if(r){var o=JSON.parse(r);if(o&&o.units)st=o;}}catch(e){}}
+function showFoSaved(ok){
+  var el=q('fo-save-ind');if(!el)return;
+  if(!ok){el.textContent='⚠ Nepodařilo se uložit (plná paměť prohlížeče) – exportujte JSON!';
+    el.style.color='var(--danger)';el.style.opacity='1';return;}
+  var n=st.units.length;
+  el.style.color='var(--text3)';
+  el.textContent=n?('✓ Uloženo '+n+' '+(n===1?'byt':(n<5?'byty':'bytů'))+' – obsaženo i v exportu JSON'):'';
+  el.style.opacity='1';
+  clearTimeout(el._t);el._t=setTimeout(function(){el.style.opacity='.55';},2500);
+}
 
 // ── VÝPOČET ──
 function computeAll(){
@@ -4739,8 +4800,13 @@ function exportFoXlsx(){
 
 // ── API pro hlavní část (persistování, reset) ──
 window.nzuFoGet=function(){return JSON.parse(JSON.stringify(st));};
-window.nzuFoSet=function(o){
-  if(o&&o.units){st=JSON.parse(JSON.stringify(o));save();if(q('fo-tbl-wrap'))render();}
+window.nzuFoSet=function(o,allowEmpty){
+  if(!o||!o.units)return;
+  // POJISTKA PROTI ZTRÁTĚ DAT: prázdný snímek nikdy nepřepíše už zadané byty.
+  // Vymazat je lze jedině tlačítkem Reset (nzuFoReset) nebo vědomým importem
+  // souboru JSON, který byty opravdu neobsahuje (allowEmpty = true).
+  if(!o.units.length&&st.units.length&&!allowEmpty)return;
+  st=JSON.parse(JSON.stringify(o));save();if(q('fo-tbl-wrap'))render();
 };
 window.nzuFoReset=function(){
   st={seq:1,units:[],extras:[]};
