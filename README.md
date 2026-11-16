@@ -24,6 +24,10 @@ Při spuštění vyberte roli:
 - **Srovnání scénářů financování** – NZÚ úvěr 2026 + banka vs. původní NZÚ (přímá dotace)
 - **Rozpočet fondu oprav na jednotlivé byty** podle spoluvlastnických podílů
   (načtení vlastníků z Nahlížení do katastru, vícenáklady, nízkopříjmové bonusy, osobní vklady)
+- **Rezerva ve FO dle podmínky banky** – ČSOB dělí (÷ 0,85 = 17,65 %), Česká spořitelna
+  přičítá (× 1,15 = 15 %). Volba platí pro celou aplikaci, ve výsledcích je srovnání obou.
+  Rezerva se počítá ze *Základu rezervy* = splátka **bez** osobního vkladu a **bez**
+  nízkopříjmové dotace – vklad snižuje splátku úvěru, ne příspěvek na údržbu domu.
 - **Úspora na vytápění** rozdělená podle podílu → sloupec *Z vlastní peněženky*
   (kolik vlastníka revitalizace reálně stojí po započtení úspory na energiích)
 - **Kalkulačka decilu** – posouzení nároku na nízkopříjmový bonus (§3.4.1)

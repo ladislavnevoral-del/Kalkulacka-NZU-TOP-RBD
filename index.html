@@ -178,6 +178,19 @@ body{font-family:'DM Sans','Segoe UI',Arial,sans-serif;background:var(--bg);colo
 #sticky-sum .lbl{color:rgba(255,255,255,.65);font-size:11px}
 /* ── METRICS ── */
 .mets{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+/* srovnání podmínek bank pro tvorbu rezervy ve FO */
+.bsrv{margin-top:9px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);padding:10px 11px}
+.bsrv:empty{display:none}
+.bsrv-h{font-size:11.5px;font-weight:700;color:var(--text);margin-bottom:7px;display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px}
+.bsrv-note{font-size:10.5px;font-weight:400;color:var(--text3)}
+.bsrv-t{width:100%;border-collapse:collapse;font-size:11.5px}
+.bsrv-t th{text-align:right;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;padding:0 7px 4px 0;border-bottom:1px solid var(--border);white-space:nowrap}
+.bsrv-t th:first-child,.bsrv-t th:nth-child(2){text-align:left}
+.bsrv-t td{text-align:right;padding:5px 7px 5px 0;border-bottom:1px solid var(--border);white-space:nowrap}
+.bsrv-t td:first-child,.bsrv-t td:nth-child(2){text-align:left}
+.bsrv-t tbody tr:last-child td{border-bottom:none}
+.bsrv-t tr.akt td{background:var(--surface3,rgba(0,0,0,.035))}
+.bsrv-pct{color:var(--text3);font-size:10.5px}
 .met{border-radius:10px;padding:9px 11px;border:1px solid var(--border);background:var(--surface2)}
 .met.nn{background:var(--surface2);border-color:var(--border)}
 .met.rr{background:var(--red-bg);border-color:var(--red-border)}
@@ -771,16 +784,13 @@ table.fo-tbl td.neg{color:var(--red)}
     </div>
     <div class="f" style="margin-bottom:7px"><label>Počet bytů</label><input type="number" id="bytu_ob" value="20" min="4" step="1"><div class="hint">Plocha: 60 m²/byt (fixně pro výpočty)</div></div>
 
-    <div class="yr-slider-wrap" style="margin-bottom:10px">
-      <label>Rezerva ve FO</label>
-      <div class="yr-slider-row">
-        <div class="yr-display" id="fo_rez_disp">15<span> %</span></div>
-        <input type="range" class="yr-range" id="fo_rez" min="15" max="18" step="1" value="15">
-      </div>
-      <div class="yr-ticks" id="fo_rez_ticks">
-        <span class="active">15</span><span>16</span><span>17</span><span>18</span>
-      </div>
-      <div class="hint" style="margin-top:4px">FO = splátka úvěrů × (1 + rezerva) – rezerva na běžnou údržbu domu</div>
+    <div class="f" style="margin-bottom:10px">
+      <label>Banka – podmínka tvorby rezervy ve FO</label>
+      <select id="fo_banka">
+        <option value="csob">ČSOB &nbsp;–&nbsp; FO = splátky ÷ 0,85</option>
+        <option value="cs">Česká spořitelna &nbsp;–&nbsp; FO = splátky × 1,15</option>
+      </select>
+      <div class="hint" id="fo_banka_hint" style="margin-top:5px;line-height:1.5"></div>
     </div>
     </div></details>
 
@@ -884,6 +894,7 @@ table.fo-tbl td.neg{color:var(--red)}
     </div>
     <div class="kpi" id="kpi-box"></div>
     <div class="mets" id="mets-box"></div>
+    <div class="bsrv" id="banka-srv"></div>
   </div>
 
   <div class="rp" id="res-cmp" style="display:none">
@@ -1155,8 +1166,8 @@ table.fo-tbl td.neg{color:var(--red)}
       <div class="f"><label>Bankovní úvěr (Kč)</label><input type="number" id="fo_bank" value="" step="10000"><label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);margin-top:3px;cursor:pointer"><input type="checkbox" id="fo_auto_bank" checked style="accent-color:var(--accent);width:13px;height:13px">⚖ dopočítávat automaticky ze zbytku</label></div>
       <div class="f"><label>Úrok banky (% p.a.)</label><input type="number" id="fo_urok" value="4.9" step="0.05"></div>
       <div class="f"><label>Splatnost banky (roky)</label><input type="number" id="fo_bank_yrs" value="30" min="1" max="40"></div>
-      <div class="f"><label>Rezerva FO – způsob</label><select id="fo_rez_mode"><option value="pct">% ze splátek bytu (vč. NZÚ 0 %)</option><option value="podil">pevná částka dle podílu</option></select></div>
-      <div class="f" id="fo_rez_pct_wrap"><label>Rezerva (% ze splátek)</label><input type="number" id="fo_rez_pct" value="15" min="0" max="50" step="1"><div class="hint">jako v NZÚ kalkulačce (15–18 %)</div></div>
+      <div class="f"><label>Rezerva FO – způsob</label><select id="fo_rez_mode"><option value="pct">dle podmínky banky (ze splátek bytu)</option><option value="podil">pevná částka dle podílu</option></select></div>
+      <div class="f" id="fo_rez_pct_wrap"><label>Podmínka banky</label><div id="fo_rez_banka" style="height:32px;display:flex;align-items:center;font-size:12px;font-weight:600;color:var(--accent)">—</div><div class="hint">přebírá se ze záložky <b>Parametry</b></div></div>
       <div class="f" id="fo_rez_mes_wrap" style="display:none"><label>Rezerva celkem (Kč/měs)</label><input type="number" id="fo_rez_mes" value="" step="100"><div class="hint">rozdělí se dle podílu</div></div>
       <div class="f"><label>Současný FO celkem (Kč/měs)</label><input type="number" id="fo_souc" value="" step="100"><div class="hint">dle podílu</div></div>
       <div class="f"><label>Úspora na vytápění (Kč/měs celkem)</label><input type="number" id="fo_uspora" value="" step="100"><div class="hint">za celý dům · rozdělí se dle podílu</div></div>
@@ -1223,7 +1234,7 @@ table.fo-tbl td.neg{color:var(--red)}
     </div>
     <div class="fo-twrap"><div id="fo-tbl-wrap"></div></div>
     <div id="fo-save-ind" style="margin-top:6px;font-size:11px;color:var(--text3);opacity:.55;transition:opacity .3s;min-height:14px"></div>
-    <div class="hint" style="margin-top:6px">Zbytek = náklad dle podílu + vícenáklady − FO − dotace − vklad − nízkopříjmová dotace. FO a vklad kryjí nejdřív nepodporované náklady; nízkopříjmová dotace snižuje výhradně komerční úvěr – bezúročný úvěr NZÚ zůstává ve stejné výši.</div>
+    <div class="hint" style="margin-top:6px">Zbytek = náklad dle podílu + vícenáklady − FO − dotace − vklad − nízkopříjmová dotace. FO a vklad kryjí nejdřív nepodporované náklady; nízkopříjmová dotace snižuje výhradně komerční úvěr – bezúročný úvěr NZÚ zůstává ve stejné výši. <b>Rezerva na údržbu se počítá ze „Základu rezervy“, tedy ze splátky bez osobního vkladu a bez nízkopříjmové dotace</b> – kdo složí vklad, má nižší splátku úvěru, ale na údržbu domu přispívá v plné výši podle podílu.</div>
   </div>
 
 </div>
@@ -1281,7 +1292,7 @@ table.fo-tbl td.neg{color:var(--red)}
       <tr><td>Celková investice – SoD</td><td>Cena díla dle smlouvy o dílo včetně DPH.</td></tr>
       <tr><td>Prostředky z FO</td><td>Kolik SVJ použije z naspořeného fondu oprav.</td></tr>
       <tr><td>Počet bytů</td><td>Rozhoduje o limitu dotace (250 000 / 750 000 Kč na byt).</td></tr>
-      <tr><td>Rezerva ve FO</td><td>15–18 % – rezerva na běžnou údržbu nad rámec splátek.</td></tr>
+      <tr><td>Rezerva ve FO</td><td>Rezerva na běžnou údržbu nad rámec splátek. Každá banka ji vyžaduje jinak a dává <b>jiné číslo</b>:<br><b>ČSOB</b> dělí: FO = (splátka banky + splátka NZÚ) <b>÷ 0,85</b> → navýšení <b>17,65 %</b><br><b>Česká spořitelna</b> přičítá: FO = (splátka banky + splátka NZÚ) <b>× 1,15</b> → navýšení <b>15,00 %</b><br>Banku vyberete v záložce <b>Parametry</b>; volba platí pro celou aplikaci včetně rozpočtu na byty, dopisů vlastníkům a exportů. Ve výsledcích je tabulka se srovnáním obou bank.</td></tr><tr><td>Základ rezervy</td><td>Rezerva se nepočítá ze skutečné splátky bytu, ale ze <b>Základu rezervy</b> = splátka bez osobního vkladu a bez nízkopříjmové dotace.<br>Kdo složí <b>osobní vklad</b>, sníží si tím splátku úvěru, ale <b>rezervu na údržbu platí dál v plné výši</b> – údržba domu se vkladem nezlevní. Totéž platí pro nízkopříjmovou dotaci.<br>Sloupec <b>Základ rezervy</b> v tabulce ukazuje, z jaké částky se rezerva počítá, takže vlastník na shromáždění vidí, proč platí rezervu z vyšší částky, než je jeho splátka. Lze ho skrýt jako ostatní sloupce.</td></tr>
     </table>
     <h3>Úvěry</h3>
     <p>NZÚ úvěr je bezúročný (0 %) – úroky hradí Fond životního prostředí. Splatnost je omezena: <b>do 1 500 000 Kč max. 10 let</b>, nad tuto částku až 15 let. Kalkulačka limit hlídá a posuvník podle toho omezí. Finální výši NZÚ lze ručně přepsat podle skutečně schválené žádosti (tlačítko <b>↓ Převzít</b> vrátí vypočtenou hodnotu).</p>
@@ -1600,7 +1611,7 @@ function doResetAll(){
   // 3) selecty a slidery na výchozí
   g('typ').value='komplex';
   sv('urok_b',4.2);sv('urok_nzu',0);
-  [['splat_b',30],['puvodni_splat',30],['fo_rez',15],['splat_nzu',15]].forEach(function(a){
+  [['splat_b',30],['puvodni_splat',30],['splat_nzu',15]].forEach(function(a){
     var sl=g(a[0]);if(!sl)return;
     if(a[0]==='splat_nzu')sl.max=15;
     sl.value=a[1];
@@ -1615,7 +1626,8 @@ function doResetAll(){
   var ss0=g('sticky-sum');if(ss0){ss0.className='';ss0.innerHTML='';}
   // FO na byty – finanční pole
   ['fo_sod','fo_fond','fo_dot','fo_nzu','fo_bank','fo_rez_mes','fo_souc','fo_uspora'].forEach(function(id){sv(id,'');});
-  sv('fo_nzu_yrs',15);sv('fo_urok',4.9);sv('fo_bank_yrs',30);sv('fo_rez_pct',15);
+  sv('fo_nzu_yrs',15);sv('fo_urok',4.9);sv('fo_bank_yrs',30);
+  var fb=g('fo_banka');if(fb)fb.value='csob';
   var frm=g('fo_rez_mode');if(frm)frm.value='pct';
   var fab=g('fo_auto_bank');if(fab)fab.checked=true;
   // 5) reset decilové záložky a FO na byty (jiné closures)
@@ -2002,6 +2014,35 @@ function updateNzuSummary(){
 }
 
 // ── PERSISTENCE ───────────────────────────────────────────────
+// ── PODMÍNKA TVORBY REZERVY VE FO DLE BANKY ──────────────────
+// Banky mají odlišně formulovanou podmínku a dávají ROZDÍLNÁ čísla:
+//   ČSOB  FO = (splátka banky + splátka NZÚ) / 0,85  → faktor 1,176471 (+17,65 %)
+//   ČS    FO = (splátka banky + splátka NZÚ) × 1,15  → faktor 1,150000 (+15,00 %)
+// Jediný zdroj pravdy – používá to hlavní výpočet, záložka FO na byty,
+// dopisy vlastníkům i exporty do Wordu, PDF a Excelu.
+var BANKY={
+  csob:{nazev:'ČSOB',           vzorec:'FO = splátky ÷ 0,85',  zkr:'÷ 0,85',  fac:1/0.85},
+  cs:  {nazev:'Česká spořitelna',vzorec:'FO = splátky × 1,15',  zkr:'× 1,15',  fac:1.15}
+};
+function bankaKod(){var e=g('fo_banka');var v=e?e.value:'csob';return BANKY[v]?v:'csob';}
+// popisek pod přepínačem: vzorec vybrané banky + kolik dělá ta druhá
+function updateBankaHint(){
+  var el=g('fo_banka_hint');if(!el)return;
+  var k=bankaKod(),b=BANKY[k];
+  var dr=Object.keys(BANKY).filter(function(x){return x!==k;})[0];
+  el.innerHTML='<b>'+b.nazev+':</b> FO = (splátka banky + splátka NZÚ) '+b.zkr
+    +' → navýšení <b>'+String(Math.round((b.fac-1)*10000)/100).replace('.',',')+' %</b>'
+    +'<br><span style="opacity:.8">'+BANKY[dr].nazev+' má '+BANKY[dr].zkr+' → '
+    +String(Math.round((BANKY[dr].fac-1)*10000)/100).replace('.',',')+' %. Srovnání obou je ve výsledcích.</span>';
+  // záložka FO na byty i dopisy vlastníkům počítají se stejnou podmínkou
+  if(window.refreshFoTab){try{window.refreshFoTab();}catch(e){}}
+}
+function bankaFac(k){return BANKY[k||bankaKod()].fac;}
+function bankaPct(k){return Math.round((bankaFac(k)-1)*10000)/100;}
+// pro ostatní moduly (FO na byty je ve vlastním uzávěru)
+window.nzuBanka=function(){var k=bankaKod();
+  return {kod:k,fac:BANKY[k].fac,nazev:BANKY[k].nazev,vzorec:BANKY[k].vzorec,zkr:BANKY[k].zkr,pct:bankaPct(k),vse:BANKY};};
+
 // Příznak „právě načítám stav" – brání tomu, aby dílčí moduly (FO na byty,
 // varianty) během načítání uložily hlavní stav s ještě nenaplněnými políčky.
 var _applying=false;
@@ -2026,6 +2067,13 @@ function applyData(data,fromFile){
 }
 function applyDataInner(data,fromFile){
   if(!data||typeof data!=='object')return false;
+  // Starší zakázky mají jen „fo_rez" (15–18 %) a žádnou banku. Přiřadíme banku,
+  // která dává nejbližší číslo, aby se uložený výpočet nerozešel:
+  // 15 % = ČS (×1,15), 17–18 % ≈ ČSOB (÷0,85 = 17,65 %).
+  if(!data['fo_banka']&&data['fo_rez']!==undefined&&data['fo_rez']!==null&&data['fo_rez']!==''){
+    var oldP=parseFloat(data['fo_rez']);
+    if(!isNaN(oldP))data['fo_banka']=(Math.abs(oldP-15)<=Math.abs(oldP-17.65))?'cs':'csob';
+  }
   if(data['_fo_byty']&&window.nzuFoSet){try{window.nzuFoSet(data['_fo_byty'],!!fromFile);}catch(e){}}
   if(Array.isArray(data['_varianty'])){
     try{
@@ -2064,7 +2112,7 @@ function applyDataInner(data,fromFile){
     else delete el.dataset.user;
   });
   updateAllSubs();updateTotZat();updateFveCard();updateTogVals();
-  updateKompletWarn();updateNzuSummary();
+  updateKompletWarn();updateNzuSummary();updateBankaHint();
   // uloženou finální výši bereme jako ruční jen tehdy, liší-li se od vypočtené
   if(nmi&&nmSaved>0){
     var dCalc=calcNzu();
@@ -2179,7 +2227,7 @@ function exportWord(){
   +'<table cellpadding="0" cellspacing="0" style="width:100%;border:none;border-collapse:collapse"><tr>'
   +metCard('Výše NZÚ úvěru (0 %)',f(r.dotaceNzu),'limit '+f(r.L.limitByt)+'/byt | §2.3','#a00000','#fff5f5','#f0c0c0')
   +metCard('Bankovní dofinancování',f(r.S3bankJ),f2(r.urokB)+' % p.a., '+r.splatB+' let','#333333','#fafafa','#e0e0e0')
-  +metCard('FO/byt/měsíc (scén. 1)',f(r.S3s*r.fac/r.bytu),f2(r.S3s*r.fac/r.totalM2)+' Kč/m²/měs. | vč. rezervy '+r.foRez+' %','#1e7e34','#edf9f0','#bce3c5')
+  +metCard('FO/byt/měsíc (scén. 1)',f(r.S3s*r.fac/r.bytu),f2(r.S3s*r.fac/r.totalM2)+' Kč/m²/měs. | '+r.rezTxt+'','#1e7e34','#edf9f0','#bce3c5')
   +'</tr><tr>'
   +(r.bonusCelk>0?metCard('Nízkopříjmový bonus',f(r.bonusCelk),'přímá dotace §3.4.1','#1e7e34','#edf9f0','#bce3c5'):'<td style="border:none"></td>')
   +metCard('Stav renovace',r.komplex?'✓ Splňuje komplex':(r.L.k?'⚠ Nepotvrzeno':'Dílčí opatření'),r.komplex?'NZÚ 2026 OK':'limit 250 000 Kč/byt',r.komplex?'#1e7e34':'#cc6600',r.komplex?'#edf9f0':'#fff8ee',r.komplex?'#bce3c5':'#f0d8b0')
@@ -2195,7 +2243,7 @@ function exportWord(){
   +'<tr><td style="font-weight:bold;background:#f8f8f8">Limit NZÚ úvěru</td><td>'+f(r.L.limitByt)+' / byt = '+f(r.L.maxByt)+' celkem</td></tr>'
   +'<tr><td style="font-weight:bold;background:#f8f8f8">Celková investice dle SoD</td><td style="font-weight:bold;color:#a00000">'+f(r.investice)+'</td></tr>'
   +'<tr><td style="font-weight:bold;background:#f8f8f8">Prostředky z fondu oprav</td><td>'+f(r.fond)+'</td></tr>'
-  +'<tr><td style="font-weight:bold;background:#f8f8f8">Rezerva ve FO</td><td>'+r.foRez+' % · FO = splátka úvěrů × '+f2(r.fac)+'</td></tr>'
+  +'<tr><td style="font-weight:bold;background:#f8f8f8">Rezerva ve FO – podmínka banky</td><td>'+r.bankaNazev+' · '+r.bankaVzorec+' · faktor '+fmtD(r.fac,4).replace('.',',')+' (navýšení '+f2(r.foRez)+' %)</td></tr>'
   +'<tr><td style="font-weight:bold;background:#f8f8f8">NZÚ úvěr 2026 (finální)</td><td style="font-weight:bold;color:#a00000">'+f(r.dotaceNzu)+' · bezúročný ('+f2(r.urokNzu)+' %), splatnost '+r.splatNzu+' let</td></tr>'
   +'<tr><td style="font-weight:bold;background:#f8f8f8">Bankovní dofinancování (scén. 1)</td><td>'+f(r.S3bankJ)+' · '+f2(r.urokB)+' % p.a., splatnost '+r.splatB+' let</td></tr>'
   +(r.bonusCelk>0?'<tr><td style="font-weight:bold;background:#f8f8f8">Nízkopříjmový bonus (§3.4.1)</td><td style="font-weight:bold;color:#1e7e34">'+f(r.bonusCelk)+' · přímá dotace, snižuje bankovní dofinancování</td></tr>':'')
@@ -2213,7 +2261,7 @@ function exportWord(){
       +'<table cellpadding="0" cellspacing="0" style="width:100%;border:'+(best?'2pt':'1.5pt')+' solid '+border+';background:'+bg+';border-collapse:collapse"><tr><td style="padding:8pt 9pt;border:none">'
       +'<p style="margin:0;font-size:7pt;font-weight:bold;color:'+(best?'#a00000':'#999999')+';text-transform:uppercase">'+(best?'★ Nejnižší přeplatek bance':'Scénář')+'</p>'
       +'<p style="margin:2pt 0 5pt 0;font-size:9.5pt;font-weight:bold;color:#1a1a1a">'+sc.n+'</p>'
-      +'<p style="margin:0;font-size:7pt;color:#999999">FO celkem / měsíc (vč. rezervy '+r.foRez+' %)</p>'
+      +'<p style="margin:0;font-size:7pt;color:#999999">FO celkem / měsíc ('+r.rezTxt+')</p>'
       +'<p style="margin:1pt 0 5pt 0;font-size:14pt;font-weight:bold;color:'+(best?'#a00000':'#333333')+'">'+f(sc.s*r.fac)+'</p>'
       +'<table cellpadding="0" cellspacing="0" style="width:100%;border:none;font-size:8pt;border-collapse:collapse">'
       +'<tr><td style="border:none;padding:1pt 0;color:#777777">FO / byt</td><td style="border:none;padding:1pt 0;text-align:right;font-weight:bold">'+f(sc.s*r.fac/r.bytu)+'</td></tr>'
@@ -2273,14 +2321,14 @@ function exportWord(){
   }).join('')
   +'</table>'
 
-  +'<p style="margin:3pt 0 0 0;font-size:7.5pt;color:#999999;font-style:italic">★ = nejnižší celkový přeplatek bance · Průměrné FO je přepočteno na délku nejdelšího scénáře ('+r.maxYrs+' let) · Plocha bytů: 60 m²/byt · FO vč. rezervy '+r.foRez+' %</p>'
+  +'<p style="margin:3pt 0 0 0;font-size:7.5pt;color:#999999;font-style:italic">★ = nejnižší celkový přeplatek bance · Průměrné FO je přepočteno na délku nejdelšího scénáře ('+r.maxYrs+' let) · Plocha bytů: 60 m²/byt · FO '+r.rezTxt+'</p>'
 
   // ── Graf (PNG snímek z Chart.js)
   +(chartPng?'<p style="margin:12pt 0 5pt 0;font-size:10pt;font-weight:bold;color:#a00000;border-bottom:1.5pt solid #f0c0c0;padding-bottom:2pt">📊 SCÉNÁŘ 1 – NZÚ ÚVĚR 2026 + BANKA · VÝVOJ FO PO ROCÍCH</p>'
   +'<p style="margin:0"><img src="file:///C:/nzu/chart.png" width="640" style="width:640px;border:1pt solid #eeeeee"></p>'
   +'<p style="margin:3pt 0 0 0;font-size:8pt"><span style="color:#558B2F;font-weight:bold">●</span> Splátka úvěru NZÚ 0 % (1.–'+r.splatNzu+'. rok) &nbsp;&nbsp; '
   +'<span style="color:#a00000;font-weight:bold">●</span> Splátka komerčního úvěru ('+f2(r.urokB)+' % p.a., '+r.splatB+' let) &nbsp;&nbsp; '
-  +'<span style="color:#999999">vč. rezervy '+r.foRez+' %</span></p>':'')
+  +'<span style="color:#999999">'+r.rezTxt+'</span></p>':'')
   +(chart2Png?'<p style="margin:12pt 0 5pt 0;font-size:10pt;font-weight:bold;color:#a00000;border-bottom:1.5pt solid #f0c0c0;padding-bottom:2pt">📊 SCÉNÁŘ 2 – PŮVODNÍ NZÚ (DOTACE) + BANKA</p>'
   +'<p style="margin:0"><img src="file:///C:/nzu/chart2.png" width="640" style="width:640px;border:1pt solid #eeeeee"></p>'
   +'<p style="margin:3pt 0 0 0;font-size:8pt"><span style="color:#a00000;font-weight:bold">●</span> Splátka bankovního úvěru po odečtení dotace '+f(r.puvodniDot)+' ('+r.puvodniSplat+' let)</p>':'')
@@ -2426,7 +2474,7 @@ function exportPdf(){
   +'<div class="mets">'
   +metB('Výše NZÚ úvěru (0 %)',f(r.dotaceNzu),'limit '+f(r.L.limitByt)+'/byt | §2.3','r')
   +metB('Bankovní dofinancování',f(r.S3bankJ),f2(r.urokB)+' % p.a., '+r.splatB+' let','')
-  +metB('FO/byt/měsíc (scén. 1)',f(r.S3s*r.fac/r.bytu),f2(r.S3s*r.fac/r.totalM2)+' Kč/m²/měs. | vč. rezervy '+r.foRez+' %','g')
+  +metB('FO/byt/měsíc (scén. 1)',f(r.S3s*r.fac/r.bytu),f2(r.S3s*r.fac/r.totalM2)+' Kč/m²/měs. | '+r.rezTxt+'','g')
   +(r.bonusCelk>0?metB('Nízkopříjmový bonus',f(r.bonusCelk),'přímá dotace §3.4.1','g'):'')
   +metB('Stav renovace',r.komplex?'✓ Splňuje komplex':(r.L.k?'⚠ Nepotvrzeno':'Dílčí opatření'),r.komplex?'NZÚ 2026 OK':'limit 250 000 Kč/byt',r.komplex?'g':'')
   +metB('Úspora úroků',f(r.usp13),'oproti běžnému bank. úvěru · '+r.splatB+' let','r')
@@ -2441,7 +2489,7 @@ function exportPdf(){
   +'<tr><td>NZÚ úvěr 2026 (finální)</td><td style="font-weight:700;color:#a00000">'+f(r.dotaceNzu)+' · '+f2(r.urokNzu)+' %, splatnost '+r.splatNzu+' let</td></tr>'
   +'<tr><td>Bankovní dofinancování</td><td>'+f(r.S3bankJ)+' · '+f2(r.urokB)+' % p.a., '+r.splatB+' let</td></tr>'
   +(r.bonusCelk>0?'<tr><td>Nízkopříjmový bonus (§3.4.1)</td><td style="font-weight:700;color:#1e7e34">'+f(r.bonusCelk)+' · přímá dotace</td></tr>':'')
-  +'<tr><td>Rezerva ve FO</td><td>'+r.foRez+' % · FO = splátka × '+f2(r.fac)+'</td></tr>'
+  +'<tr><td>Rezerva ve FO – podmínka banky</td><td>'+r.bankaNazev+' · '+r.bankaVzorec+' · faktor '+fmtD(r.fac,4).replace('.',',')+' (navýšení '+f2(r.foRez)+' %)</td></tr>'
   +'<tr><td>Původní NZÚ dotace (scén. 2)</td><td>'+f(r.puvodniDot)+' · banka '+r.puvodniSplat+' let</td></tr>'
   +'</table>'
   +'<h2 class="pgb">⇔ Srovnání scénářů financování</h2>'
@@ -2452,7 +2500,7 @@ function exportPdf(){
     return '<div class="card'+(best?' best':'')+'">'
       +'<div class="cl">'+(best?'★ Nejnižší přeplatek bance':'Scénář')+'</div>'
       +'<div class="cn">'+sc.n+'</div>'
-      +'<div class="cs">FO celkem / měsíc (vč. rezervy '+r.foRez+' %)</div>'
+      +'<div class="cs">FO celkem / měsíc ('+r.rezTxt+')</div>'
       +'<div class="cv">'+f(sc.s*r.fac)+'</div>'
       +'<div class="crow"><span>FO / byt</span><span>'+f(sc.s*r.fac/r.bytu)+'</span></div>'
       +'<div class="crow"><span>FO / m²</span><span>'+f2(sc.s*r.fac/r.totalM2)+' Kč</span></div>'
@@ -2483,11 +2531,11 @@ function exportPdf(){
       +'<td style="color:'+(sc.usp>0?'#1e7e34':'#bbb')+'">'+(sc.usp>0?'+'+f(sc.usp):'—')+'</td></tr>';
   }).join('')
   +'</table>'
-  +'<p class="note">★ = nejnižší celkový přeplatek bance · Průměrné FO přepočteno na '+r.maxYrs+' let · 60 m²/byt · FO vč. rezervy '+r.foRez+' %</p>'
+  +'<p class="note">★ = nejnižší celkový přeplatek bance · Průměrné FO přepočteno na '+r.maxYrs+' let · 60 m²/byt · FO '+r.rezTxt+'</p>'
   +(chartImg?'<h2>📊 Scénář 1 – NZÚ úvěr 2026 + banka · vývoj FO po rocích</h2><div class="chart"><img src="'+chartImg+'" alt="Graf scénáře 1"></div>'
     +'<p class="pop"><span style="color:#558B2F;font-weight:700">●</span> Splátka úvěru NZÚ 0 % (1.–'+r.splatNzu+'. rok) &nbsp; '
     +'<span style="color:#a00000;font-weight:700">●</span> Splátka komerčního úvěru ('+f2(r.urokB)+' % p.a., '+r.splatB+' let) &nbsp; '
-    +'<span style="color:#999">vč. rezervy '+r.foRez+' %</span></p>':'')
+    +'<span style="color:#999">'+r.rezTxt+'</span></p>':'')
   +(chart2Img?'<h2>📊 Scénář 2 – původní NZÚ (dotace) + banka · vývoj FO po rocích</h2><div class="chart"><img src="'+chart2Img+'" alt="Graf scénáře 2"></div>'
     +'<p class="pop"><span style="color:#a00000;font-weight:700">●</span> Splátka bankovního úvěru po odečtení dotace '+f(r.puvodniDot)+' ('+r.puvodniSplat+' let)</p>':'')
 
@@ -2620,7 +2668,8 @@ var WIZ=[
     ['num','fond','Prostředky z fondu oprav (Kč)',''],
     ['num','urok_b','Úroková sazba banky (% p.a.)','aktuální tržní sazba'],
     ['num','splat_b','Splatnost banky (roky)','5–30 let'],
-    ['num','fo_rez','Rezerva ve FO (%)','15–18 %'],
+    ['sel','fo_banka','Banka – podmínka rezervy ve FO','ČSOB dělí ÷ 0,85 (+17,65 %) · ČS přičítá × 1,15 (+15 %)',1,
+      [['csob','ČSOB – FO = splátky ÷ 0,85'],['cs','Česká spořitelna – FO = splátky × 1,15']]],
     ['num','nizko_b','Počet nízkopříjmových bytů','bonus §3.4.1 · jen komplexní'],
     ['num','puvodni_dot','Původní NZÚ dotace (Kč)','nepovinné · srovnávací scénář 2',1]
   ]},
@@ -2769,7 +2818,7 @@ function exportData(){
     'nizko_b':            'Nízkopříjmový bonus – počet bytů §3.4.1 | jen komplexní | 2 000 Kč/m² (max 60 m²/byt) = max 120 000 Kč/byt | přímá dotace',
     'komplet-ok':         'Splňuje podmínky komplexní renovace §2.3.2 (true/false) | komplexní zateplení obálky + třída C Uem | NUTNÉ pro limit 750 000 Kč/byt',
     'investice':          'Celková investice dle SoD (Kč)',
-    'fo_rez':             'Rezerva ve FO (%) | FO = splátka × (1+rezerva) | 15–18 %',
+    'fo_banka':           'Banka – podmínka tvorby rezervy ve FO | "csob" = ČSOB: FO = splátky ÷ 0,85 (navýšení 17,65 %) | "cs" = Česká spořitelna: FO = splátky × 1,15 (navýšení 15,00 %)',
     'fond':               'Prostředky z fondu oprav použité na spolufinancování (Kč)',
     'bytu_ob':            'Počet bytů – pracovní hodnota obchodníka (přebráno od přípraváře)',
     'urok_b':             'Úroková sazba bankovního úvěru (% p.a.) | aktuální tržní sazba',
@@ -2874,7 +2923,7 @@ function doLogin(){
   g('app').style.display='block';
   setRole(r);
   buildTogItems();syncM2();updateAllSubs();updateTotZat();updateFveCard();
-  updateKompletWarn();updateNzuSummary();
+  updateKompletWarn();updateNzuSummary();updateBankaHint();
   loadState();
   updateBackupInd();
   // Update formatted displays
@@ -2967,8 +3016,11 @@ function buildResults(p){
   var{bytu,avgM2,totalM2,L,investice,fond,urokB,splatB,splatNzu,urokNzu,bonusCelk,puvodniDot,puvodniSplat}=p;
   var komplex=L.k&&L.komplet;
   var maxYrs=Math.max(splatB,splatNzu,puvodniSplat);
-  var foRez=+((g('fo_rez')||{}).value||15);
-  var fac=1+foRez/100; // FO = splátka × (1+rezerva)
+  var bk=bankaKod(),bdef=BANKY[bk];
+  var fac=bdef.fac;
+  var foRez=Math.round((fac-1)*10000)/100; // efektivní navýšení v % – jen pro zobrazení
+  // jednotný popisek do všech výstupů (Word, PDF, HTML, karty)
+  var rezTxt=bdef.nazev+' '+bdef.zkr+' · rezerva +'+fmtD(foRez,2).replace('.',',')+' %';
 
   // ─── SCÉNÁŘ 1: Banka bez NZÚ ───────────────────────────────
   var S1j=Math.max(0,investice-fond);
@@ -3032,6 +3084,7 @@ function buildResults(p){
   lastR={dotaceNzu:dotaceNzu,bytu:bytu,avgM2:avgM2,totalM2:totalM2,L:L,komplex:komplex,
     investice:investice,fond:fond,urokB:urokB,splatB:splatB,splatNzu:splatNzu,urokNzu:urokNzu,
     bonusCelk:bonusCelk,puvodniDot:puvodniDot,puvodniSplat:puvodniSplat,foRez:foRez,fac:fac,
+    banka:bk,bankaNazev:bdef.nazev,bankaVzorec:bdef.vzorec,bankaZkr:bdef.zkr,rezTxt:rezTxt,
     S1j:S1j,S1s:S1s,S1u:S1u,S1avg:S1avg,
     S2j:S2j,S2s:S2s,S2u:S2u,S2avg:S2avg,
     S3j:S3j,S3s:S3s,S3u:S3u,S3avg:S3avg,S3nzuJ:S3nzuJ,S3nzuS:S3nzuS,S3bankJ:S3bankJ,S3bankS:S3bankS,S3bankU:S3bankU,
@@ -3051,7 +3104,7 @@ function buildResults(p){
   g('kpi-box').innerHTML=
     '<div class="kpi-main"><div class="kl">Platba do fondu oprav – průměrný byt</div>'
       +'<div class="kv">'+fmtK(foByt)+' / měs.</div>'
-      +'<div class="ks">1.–'+Math.min(splatNzu,splatB)+'. rok · poté '+fmtK(foByt2)+' · vč. rezervy '+foRez+' %</div></div>'
+      +'<div class="ks">1.–'+Math.min(splatNzu,splatB)+'. rok · poté '+fmtK(foByt2)+' · '+bdef.nazev+' '+bdef.zkr+' (+'+fmtD(foRez,2).replace('.',',')+' %)</div></div>'
     +'<div class="kpi-side"><div class="kl">Bezúročný úvěr NZÚ</div>'
       +'<div class="kv g">'+fmtK(dotaceNzu)+'</div>'
       +'<div class="ks">0 % na '+splatNzu+' let · limit '+fmtK(L.limitByt)+'/byt</div></div>'
@@ -3075,6 +3128,31 @@ function buildResults(p){
     +'<div class="met nn"><div class="ml">FO na m² / měsíc</div><div class="mv">'+fmtD(S3s*fac/totalM2,2)+' Kč</div><div class="ms">při uvažovaných 60 m²/byt</div></div>'
     +bonusH+kompH;
 
+  // ─── SROVNÁNÍ PODMÍNEK BANK ────────────────────────────────
+  // Obě banky formulují podmínku jinak a dávají jiné číslo – obchodník
+  // musí vidět oba výsledky, i když exporty počítají s vybranou bankou.
+  var bsrv=g('banka-srv');
+  if(bsrv){
+    var splCelk=S3s; // splátka banky + splátka NZÚ v 1. fázi
+    bsrv.innerHTML='<div class="bsrv-h">Podmínka tvorby rezervy ve FO – srovnání bank'
+      +'<span class="bsrv-note">počítá se s vybranou bankou: <b>'+bdef.nazev+'</b></span></div>'
+      +'<table class="bsrv-t"><thead><tr><th>Banka</th><th>Podmínka</th><th>Faktor</th>'
+      +'<th>FO celkem / měs.</th><th>FO / byt / měs.</th><th>Rozdíl / byt</th></tr></thead><tbody>'
+      +Object.keys(BANKY).map(function(k){
+        var b=BANKY[k],akt=(k===bk);
+        var fo=splCelk*b.fac, foB=fo/bytu;
+        var rozdil=foB-(splCelk*BANKY.cs.fac/bytu);
+        return '<tr'+(akt?' class="akt"':'')+'><td><b>'+b.nazev+'</b>'+(akt?' ★':'')+'</td>'
+          +'<td>'+b.vzorec+'</td>'
+          +'<td>'+fmtD(b.fac,4).replace('.',',')+' <span class="bsrv-pct">(+'+fmtD((b.fac-1)*100,2).replace('.',',')+' %)</span></td>'
+          +'<td>'+fmtK(fo)+'</td><td><b>'+fmtK(foB)+'</b></td>'
+          +'<td>'+(Math.abs(rozdil)<1?'—':(rozdil>0?'+':'−')+fmtK(Math.abs(rozdil)))+'</td></tr>';
+      }).join('')
+      +'</tbody></table>'
+      +'<div class="hint" style="margin-top:6px">Rozdíl je vztažen k mírnější podmínce (Česká spořitelna). '
+      +'ČSOB dělí splátku, takže při stejných 15 % vychází navýšení 17,65 % – o 2,65 p. b. víc.</div>';
+  }
+
   // ─── SROVNÁVACÍ KARTY ──────────────────────────────────────
   var vtChecked=[
     false, // scénář 1 se nezobrazuje – slouží jen jako reference pro výpočet úspory
@@ -3096,7 +3174,7 @@ function buildResults(p){
     return '<div class="cmp'+(best?' best':'')+'"><div class="cmp-lbl'+(best?' bl':'')+'">'+
       (best?'★ Nejnižší přeplatek bance':'Scénář '+(sc.idx===2?1:2))+'</div>'+
       '<div class="cmp-name">'+sc.n+'</div>'+
-      '<div class="cmp-sl">FO celkem / měsíc (vč. rezervy '+foRez+' %)</div>'+
+      '<div class="cmp-sl">FO celkem / měsíc ('+rezTxt+')</div>'+
       '<div class="cmp-sv'+(best?' bv':'')+'">'+fmtK(sc.s*fac)+'</div>'+
       '<div class="cmp-row"><span>FO / byt</span><span>'+fmtK(sc.s*fac/bytu)+'</span></div>'+
       '<div class="cmp-row"><span>FO / m²</span><span>'+fmtD(sc.s*fac/totalM2,2)+' Kč</span></div>'+
@@ -3223,7 +3301,7 @@ function buildResults(p){
     });
     g('legend-box2').innerHTML=
       '<span><span class="ldot" style="background:'+C_S2+'"></span>Splátka bankovního úvěru ('+fmtD(urokB,2)+' % p.a., '+puvodniSplat+' let)</span>'+
-      '<span style="color:#A8A49E">Přímá dotace '+fmtK(puvodniDot)+' snížila jistinu · vč. rezervy '+foRez+' %</span>';
+      '<span style="color:#A8A49E">Přímá dotace '+fmtK(puvodniDot)+' snížila jistinu · '+rezTxt+'</span>';
   }
 
   g('no-hint').style.display='none';
@@ -3272,7 +3350,6 @@ function initSlider(id, dispId, ticksId, unit, cerpId) {
 initSlider('splat_b', 'splat_b_disp', 'splat_b_ticks', ' let', 'splat_b_cerp');
 initSlider('splat_nzu', 'splat_nzu_disp', 'splat_nzu_ticks', ' let', 'splat_nzu_cerp');
 initSlider('puvodni_splat', 'puvodni_splat_disp', 'puvodni_splat_ticks', ' let', 'puvodni_splat_cerp');
-initSlider('fo_rez', 'fo_rez_disp', 'fo_rez_ticks', ' %');
 
 // ── VARIANT TOGGLES PRO GRAF ──────────────────────────────────
 // Skryje/zobrazí scénář POUZE v grafu; tabulka a karty zůstávají kompletní
@@ -3296,7 +3373,9 @@ document.addEventListener('input', function(e){
 
 // ── REAKTIVNÍ PŘEPOČET ────────────────────────────────────────
 // Po prvním výpočtu se výsledky automaticky přepočítají při změně vstupů
-var RECALC_IDS=['fo_rez','nizko_b','investice','fond','urok_b','splat_b','splat_nzu','urok_nzu','puvodni_dot','puvodni_splat','nzu_man','bytu','bytu_ob','tc_bytu','tuv_bytu','fve_kwp','fve_bat','fve_bytu'];
+var fbEl=document.getElementById('fo_banka');
+if(fbEl)fbEl.addEventListener('change',updateBankaHint);
+var RECALC_IDS=['fo_banka','nizko_b','investice','fond','urok_b','splat_b','splat_nzu','urok_nzu','puvodni_dot','puvodni_splat','nzu_man','bytu','bytu_ob','tc_bytu','tuv_bytu','fve_kwp','fve_bat','fve_bytu'];
 function maybeRecalc(t){
   if(!lastP)return;
   if(!t||!t.id)return;
@@ -3938,7 +4017,11 @@ function computeAll(){
     bank:nv('fo_bank'),urok:nv('fo_urok'),bankYrs:nv('fo_bank_yrs')||30,rez:nv('fo_rez_mes'),souc:nv('fo_souc')};
   fin.uspora=nv('fo_uspora');
   fin.rezMode=(q('fo_rez_mode')||{}).value||'pct';
-  fin.rezPct=nv('fo_rez_pct');
+  // podmínku banky přebíráme z hlavní záložky – jedno nastavení pro celou aplikaci
+  var _b=window.nzuBanka?window.nzuBanka():{fac:1.15,nazev:'Česká spořitelna',vzorec:'FO = splátky × 1,15',zkr:'× 1,15',pct:15};
+  fin.banka=_b.nazev;fin.bankaVzorec=_b.vzorec;fin.bankaZkr=_b.zkr;fin.bankaKod=_b.kod;
+  fin.facRez=_b.fac;
+  fin.rezPct=_b.pct;      // efektivní navýšení v % – pro zobrazení a Excel
   fin.splNzu=fin.nzuYrs>0?fin.nzu/(fin.nzuYrs*12):0;
   var rows=st.units.map(function(u){
     var pod=parsePodil(u.pod);
@@ -3983,6 +4066,11 @@ function computeAll(){
     r.nzuPrin=r.shareN*nzuUse;               // vkladem ani bonusem nedotčeno
     r.splN=fin.nzuYrs>0?r.nzuPrin/(fin.nzuYrs*12):0;
     r.bankPrin=Math.max(0,r.zbytek-r.nzuPrin); // bonus snižuje jen tuto část
+    // Jistina BEZ osobního vkladu a BEZ nízkopříjmového bonusu – z ní se
+    // počítá rezerva na údržbu. Vklad ani bonus rezervu nesnižují: snižují
+    // jen splátku úvěru, na údržbu domu přispívají všichni dle podílu.
+    r.zbytek0=r.Pn+r.Nn;
+    r.bankPrin0=Math.max(0,r.zbytek0-r.nzuPrin);
   });
   var sumB=rows.reduce(function(a,r){return a+r.bankPrin;},0);
   rows.forEach(function(r){
@@ -3990,7 +4078,13 @@ function computeAll(){
     // aby změna u jednoho bytu neposouvala splátky ostatním
     r.splB=ann2(r.bankPrin,fin.urok,fin.bankYrs);
     r.spl=r.splN+r.splB;
-    r.rez=(fin.rezMode==='pct')?(r.spl*fin.rezPct/100):(r.pod*fin.rez);
+    // ZÁKLAD REZERVY = splátka, kterou by byt měl bez vkladu a bez bonusu.
+    // Kdo složí vklad, má nižší splátku úvěru, ale rezervu platí v plné výši.
+    r.splB0=ann2(r.bankPrin0,fin.urok,fin.bankYrs);
+    r.splBase=r.splN+r.splB0;
+    // ČSOB dělí (základ/0,85), ČS přičítá (základ×1,15) – faktor řeší nzuBanka()
+    r.rez=(fin.rezMode==='pct')?(r.splBase*(fin.facRez-1)):(r.pod*fin.rez);
+    r.rezUspora=r.splBase-r.spl;   // o kolik si vklad/bonus snížil splátku
     r.novy1=r.spl+r.rez;
     var zbSpl=(fin.bankYrs>fin.nzuYrs)?r.splB:((fin.nzuYrs>fin.bankYrs)?r.splN:0);
     r.novy2=zbSpl+r.rez;
@@ -4053,7 +4147,7 @@ var COLS=[
   {k:'pct',l:'%'},{k:'nakl',l:'Náklad společ.'},{k:'ex',l:'Vícenáklady'},
   {k:'foP',l:'− FO'},{k:'dotP',l:'− Dotace'},{k:'niz',l:'Nízkopř.'},{k:'vklad',l:'− Vklad'},
   {k:'zbytek',l:'Zbytek (úvěr)'},{k:'nzuP',l:'Úvěr NZÚ 0 %'},{k:'bankP',l:'Úvěr banka'},{k:'share',l:'Podíl úvěru'},{k:'splN',l:'Spl. NZÚ 0 %'},{k:'splB',l:'Spl. banka'},
-  {k:'rez',l:'Rezerva'},{k:'novy1',l:'FO 1. fáze'},{k:'novy2',l:'FO 2. fáze'},{k:'souc',l:'Souč. FO'},{k:'uspVyt',l:'Úspora na byt'},{k:'navys',l:'Navýšení'},{k:'penezenka',l:'Z vlastní peněženky'}
+  {k:'rezBase',l:'Základ rezervy'},{k:'rez',l:'Rezerva'},{k:'novy1',l:'FO 1. fáze'},{k:'novy2',l:'FO 2. fáze'},{k:'souc',l:'Souč. FO'},{k:'uspVyt',l:'Úspora na byt'},{k:'navys',l:'Navýšení'},{k:'penezenka',l:'Z vlastní peněženky'}
 ];
 function V(k){return !(st.hcols&&st.hcols[k]);}
 function render(){
@@ -4062,6 +4156,9 @@ function render(){
   var rm=(q('fo_rez_mode')||{}).value||'pct';
   if(q('fo_rez_pct_wrap'))q('fo_rez_pct_wrap').style.display=rm==='pct'?'':'none';
   if(q('fo_rez_mes_wrap'))q('fo_rez_mes_wrap').style.display=rm==='podil'?'':'none';
+  var rbe=q('fo_rez_banka');
+  if(rbe){var _bb=window.nzuBanka?window.nzuBanka():null;
+    rbe.textContent=_bb?(_bb.nazev+' '+_bb.zkr+'  (+'+String(_bb.pct).replace('.',',')+' %)'):'—';}
   renderExtras();
   var C=computeAll(),fin=C.fin;
   updFinSummary(C);
@@ -4090,6 +4187,7 @@ function render(){
     +(V('share')?'<th>Podíl úvěru</th>':'')
     +(V('splN')?'<th>Spl. NZÚ 0 %</th>':'')
     +(V('splB')?'<th>Spl. banka</th>':'')
+    +(V('rezBase')?'<th title="splátka bez vkladu a bez bonusu – základ pro rezervu">Základ rezervy</th>':'')
     +(V('rez')?'<th>Rezerva /měs</th>':'')
     +(V('novy1')?'<th>FO 1.–'+fin.y1+'. rok</th>':'')
     +(V('novy2')?'<th>FO '+(fin.y1+1)+'.–'+fin.y2+'. rok</th>':'')
@@ -4124,6 +4222,7 @@ function render(){
       +(V('share')?'<td data-cc="share">'+fmtP(r.share)+'</td>':'')
       +(V('splN')?'<td data-cc="splN">'+fmt(r.splN)+'</td>':'')
       +(V('splB')?'<td data-cc="splB">'+fmt(r.splB)+'</td>':'')
+      +(V('rezBase')?'<td data-cc="rezBase" title="Splátka bez osobního vkladu a bez nízkopříjmového bonusu – z této částky se počítá rezerva">'+fmt(r.splBase)+'</td>':'')
       +(V('rez')?'<td data-cc="rez">'+fmt(r.rez)+'</td>':'')
       +(V('novy1')?'<td data-cc="novy1" class="pos"><b>'+fmt(r.novy1)+'</b></td>':'')
       +(V('novy2')?'<td data-cc="novy2">'+fmt(r.novy2)+'</td>':'')
@@ -4154,6 +4253,7 @@ function render(){
       +(V('share')?'<td data-fc="share">'+fmtP(sum('share'))+'</td>':'')
       +(V('splN')?'<td data-fc="splN">'+fmt(sum('splN'))+'</td>':'')
       +(V('splB')?'<td data-fc="splB">'+fmt(sum('splB'))+'</td>':'')
+      +(V('rezBase')?'<td data-fc="rezBase">'+fmt(sum('splBase'))+'</td>':'')
       +(V('rez')?'<td data-fc="rez">'+fmt(sum('rez'))+'</td>':'')
       +(V('novy1')?'<td data-fc="novy1">'+fmt(sum('novy1'))+'</td>':'')
       +(V('novy2')?'<td data-fc="novy2">'+fmt(sum('novy2'))+'</td>':'')
@@ -4231,7 +4331,7 @@ function bindEvents(){
     var d=e.target.getAttribute&&e.target.getAttribute('data-esup');
     if(d){var ex=st.extras.filter(function(x){return x.id===+d;})[0];if(ex){ex.sup=e.target.value!=='un';save();render();}}
   });
-  ['fo_sod','fo_fond','fo_dot','fo_nzu','fo_nzu_yrs','fo_bank','fo_urok','fo_bank_yrs','fo_rez_mes','fo_rez_pct','fo_souc','fo_uspora'].forEach(function(id){
+  ['fo_sod','fo_fond','fo_dot','fo_nzu','fo_nzu_yrs','fo_bank','fo_urok','fo_bank_yrs','fo_rez_mes','fo_souc','fo_uspora'].forEach(function(id){
     var el=q(id);if(el)el.addEventListener('input',softUpdate);
   });
   var rzm=q('fo_rez_mode');if(rzm)rzm.addEventListener('change',function(){render();});
@@ -4270,7 +4370,7 @@ function bindEvents(){
     q('fo_nzu').value=f.nzu;q('fo_nzu_yrs').value=f.nzuYrs;
     q('fo_bank').value=f.bank;q('fo_urok').value=f.urok;q('fo_bank_yrs').value=f.bankYrs;
     q('fo_rez_mes').value=f.rez;
-    if(f.rezPct){q('fo_rez_mode').value='pct';q('fo_rez_pct').value=f.rezPct;}
+    if(f.rezPct){q('fo_rez_mode').value='pct';}  // procento se už nezadává – řídí ho výběr banky
     q('fo_dot').value=0; // varianta 3 NZÚ 2026: žádná plošná přímá dotace
     if(f.bonus>0)alert('Pozor: v kalkulačce je nízkopříjmový bonus '+fmt(f.bonus)+' Kč.\n\nBonus patří konkrétním bytům – zaškrtněte pole „Nízkopř.“ u příslušných bytů v tabulce (výchozí 120 000 Kč/byt lze upravit). Nepřenáší se plošně.');
     softUpdate();
@@ -4343,6 +4443,7 @@ function liveUpdate(){
     sc('share',fmtP(r.share));
     sc('splN',fmt(r.splN));
     sc('splB',fmt(r.splB));
+    sc('rezBase',fmt(r.splBase));
     sc('rez',fmt(r.rez));
     sc('novy1','<b>'+fmt(r.novy1)+'</b>','pos');
     sc('novy2',fmt(r.novy2));
@@ -4367,6 +4468,7 @@ function liveUpdate(){
   fc('share',fmtP(sum('share')));
   fc('splN',fmt(sum('splN')));
   fc('splB',fmt(sum('splB')));
+  fc('rezBase',fmt(sum('splBase')));
   fc('rez',fmt(sum('rez')));
   fc('novy1',fmt(sum('novy1')));
   fc('novy2',fmt(sum('novy2')));
@@ -4489,13 +4591,13 @@ function exportFo(pdf){
   var showDot=fin.dot>0;
   var thead='<tr><th>Byt</th><th style="text-align:left">Vlastník</th><th>Podíl %</th><th>Náklad společ.</th>'
     +ex.map(function(e){return '<th>'+esc(e.name)+'</th>';}).join('')
-    +'<th>FO</th>'+(showDot?'<th>Dotace</th>':'')+'<th>Nízkopř. dotace</th><th>Vklad</th><th>Zbytek (úvěr)</th><th>Úvěr NZÚ 0 %</th><th>Úvěr banka</th><th>Podíl úvěru %</th><th>Spl. NZÚ 0 %</th><th>Spl. banka</th><th>Rezerva/měs</th><th>FO 1.–'+fin.y1+'. rok</th><th>FO '+(fin.y1+1)+'.–'+fin.y2+'. rok</th><th>Souč. FO</th>'+(fin.uspora>0?'<th>Úspora na byt/měs</th>':'')+'<th>Navýšení</th>'+(fin.uspora>0?'<th>Z vlastní peněženky</th>':'')+'</tr>';
+    +'<th>FO</th>'+(showDot?'<th>Dotace</th>':'')+'<th>Nízkopř. dotace</th><th>Vklad</th><th>Zbytek (úvěr)</th><th>Úvěr NZÚ 0 %</th><th>Úvěr banka</th><th>Podíl úvěru %</th><th>Spl. NZÚ 0 %</th><th>Spl. banka</th><th>Základ rezervy</th><th>Rezerva/měs</th><th>FO 1.–'+fin.y1+'. rok</th><th>FO '+(fin.y1+1)+'.–'+fin.y2+'. rok</th><th>Souč. FO</th>'+(fin.uspora>0?'<th>Úspora na byt/měs</th>':'')+'<th>Navýšení</th>'+(fin.uspora>0?'<th>Z vlastní peněženky</th>':'')+'</tr>';
   var tbody=C.rows.map(function(r){
     return '<tr><td style="text-align:center">'+esc(r.u.c)+'</td><td style="text-align:left">'+esc(r.u.vl)+'</td><td>'+fmtP(r.pod)+'</td><td>'+fmt(r.nakl)+'</td>'
       +ex.map(function(e){var v=(e.mode==='exact')?(parseFloat(e.map[r.u.id])||0):(function(){var cnt=st.units.filter(function(x){return e.map[x.id];}).length;return cnt>0&&e.map[r.u.id]?(parseFloat(e.cena)||0)/cnt:0;})();return '<td>'+fmt(v)+'</td>';}).join('')
       +'<td>'+fmt(r.foP)+'</td>'+(showDot?'<td>'+fmt(r.dotP)+'</td>':'')+'<td>'+fmt(r.niz)+'</td><td>'+fmt(r.vklad)+'</td>'
       +'<td style="font-weight:bold">'+fmt(r.zbytek)+'</td><td>'+fmt(r.nzuPrin)+'</td><td>'+fmt(r.bankPrin)+'</td><td>'+fmtP(r.share)+'</td>'
-      +'<td>'+fmt(r.splN)+'</td><td>'+fmt(r.splB)+'</td><td>'+fmt(r.rez)+'</td>'
+      +'<td>'+fmt(r.splN)+'</td><td>'+fmt(r.splB)+'</td><td>'+fmt(r.splBase)+'</td><td>'+fmt(r.rez)+'</td>'
       +'<td style="font-weight:bold;color:#1e7e34">'+fmt(r.novy1)+'</td><td>'+fmt(r.novy2)+'</td><td>'+fmt(r.souc)+'</td>'
       +(fin.uspora>0?'<td style="color:#1e7e34">−'+fmt(r.uspVyt)+'</td>':'')
       +'<td style="font-weight:bold;color:'+(r.navys>0?'#a00000':'#1e7e34')+'">'+(r.navys>0?'+':'')+fmt(r.navys)+'</td>'
@@ -4504,7 +4606,7 @@ function exportFo(pdf){
   }).join('')
   +'<tr style="background:#fff5f5;font-weight:bold"><td></td><td style="text-align:left">CELKEM ('+C.rows.length+' bytů)</td><td>'+fmtP(C.rows.reduce(function(a,r){return a+r.pod;},0))+'</td><td>'+fmt(sum('nakl'))+'</td>'
   +ex.map(function(){return '<td></td>';}).join('')
-  +'<td>'+fmt(sum('foP'))+'</td>'+(showDot?'<td>'+fmt(sum('dotP'))+'</td>':'')+'<td>'+fmt(sum('niz'))+'</td><td>'+fmt(sum('vklad'))+'</td><td>'+fmt(C.sumZ)+'</td><td>'+fmt(sum('nzuPrin'))+'</td><td>'+fmt(sum('bankPrin'))+'</td><td></td><td>'+fmt(sum('splN'))+'</td><td>'+fmt(sum('splB'))+'</td><td>'+fmt(sum('rez'))+'</td><td>'+fmt(sum('novy1'))+'</td><td>'+fmt(sum('novy2'))+'</td><td>'+fmt(sum('souc'))+'</td>'+(fin.uspora>0?'<td>−'+fmt(sum('uspVyt'))+'</td>':'')+'<td>'+fmt(sum('navys'))+'</td>'+(fin.uspora>0?'<td>'+fmt(sum('penezenka'))+'</td>':'')+'</tr>';
+  +'<td>'+fmt(sum('foP'))+'</td>'+(showDot?'<td>'+fmt(sum('dotP'))+'</td>':'')+'<td>'+fmt(sum('niz'))+'</td><td>'+fmt(sum('vklad'))+'</td><td>'+fmt(C.sumZ)+'</td><td>'+fmt(sum('nzuPrin'))+'</td><td>'+fmt(sum('bankPrin'))+'</td><td></td><td>'+fmt(sum('splN'))+'</td><td>'+fmt(sum('splB'))+'</td><td>'+fmt(sum('splBase'))+'</td><td>'+fmt(sum('rez'))+'</td><td>'+fmt(sum('novy1'))+'</td><td>'+fmt(sum('novy2'))+'</td><td>'+fmt(sum('souc'))+'</td>'+(fin.uspora>0?'<td>−'+fmt(sum('uspVyt'))+'</td>':'')+'<td>'+fmt(sum('navys'))+'</td>'+(fin.uspora>0?'<td>'+fmt(sum('penezenka'))+'</td>':'')+'</tr>';
   var params='<table class="in"><tr><td>Adresa domu</td><td style="font-weight:bold">'+(adr||'—')+'</td></tr>'
     +'<tr><td>SoD – společná část</td><td>'+fmt(fin.sod)+' Kč</td></tr>'
     +(ex.length?'<tr><td>Vícenáklady</td><td>'+ex.map(function(e){return esc(e.name)+(e.sup===false?' (nepodporované – jen banka)':' (NZÚ 0 %)');}).join(', ')+'</td></tr>':'')
@@ -4513,7 +4615,7 @@ function exportFo(pdf){
     +'<tr><td>NZÚ úvěr (0 %)</td><td style="font-weight:bold">'+fmt(fin.nzu)+' Kč · '+fin.nzuYrs+' let · splátka '+fmt(fin.splNzu)+' Kč/měs</td></tr>'
     +'<tr><td>Bankovní úvěr</td><td style="font-weight:bold">'+fmt(fin.bank)+' Kč · '+String(fin.urok).replace('.',',')+' % p.a. · '+fin.bankYrs+' let · splátka '+fmt(fin.splBank)+' Kč/měs</td></tr>'
     +(fin.uspora>0?'<tr><td>Úspora na vytápění</td><td>'+fmt(fin.uspora)+' Kč/měs za celý dům (rozděleno dle podílu)</td></tr>':'')
-    +'<tr><td>Tvorba rezervy FO</td><td>'+(fin.rezMode==='pct'?(String(fin.rezPct).replace('.',',')+' % ze splátek bytu (vč. NZÚ 0 %)'):(fmt(fin.rez)+' Kč/měs dle podílu'))+'</td></tr></table>';
+    +'<tr><td>Tvorba rezervy FO</td><td>'+(fin.rezMode==='pct'?(fin.banka+' – '+fin.bankaVzorec+' (navýšení '+String(fin.rezPct).replace('.',',')+' %). Základem je splátka bytu vč. NZÚ 0 %, ale <b>bez osobního vkladu a bez nízkopříjmové dotace</b> – vklad snižuje splátku úvěru, ne rezervu na údržbu.'):(fmt(fin.rez)+' Kč/měs dle podílu'))+'</td></tr></table>';
   var css='@page{size:841.9pt 595.3pt;mso-page-orientation:landscape;margin:36pt 36pt}'
     +'body{font-family:"Segoe UI",Arial,sans-serif;font-size:9pt;color:#1a1a1a}'
     +'table{border-collapse:collapse;width:100%}'
@@ -4586,7 +4688,11 @@ function exportDopisy(word){
       +'<div class="cols"><div class="col"><div class="ct">Z čeho se platba skládá</div><table>'
       +'<tr><td>Splátka bezúročného úvěru NZÚ (0 %, '+fin.nzuYrs+' let)</td><td class="n">'+K(r.splN)+'</td></tr>'
       +'<tr><td>Splátka bankovního úvěru ('+String(fin.urok).replace('.',',')+' % p.a., '+fin.bankYrs+' let)</td><td class="n">'+K(r.splB)+'</td></tr>'
-      +'<tr><td>Rezerva na běžnou údržbu domu</td><td class="n">'+K(r.rez)+'</td></tr>'
+      +'<tr><td>Rezerva na běžnou údržbu domu'
+        +((r.vklad>0||r.niz>0)?'<br><span style="font-size:7pt;color:#777">počítá se ze splátky '+K(r.splBase)+' Kč, tj. bez '
+          +(r.vklad>0&&r.niz>0?'vašeho vkladu a nízkopříjmové dotace':(r.vklad>0?'vašeho vkladu':'nízkopříjmové dotace'))
+          +' – na údržbu domu přispívají všichni podle podílu</span>':'')
+        +'</td><td class="n">'+K(r.rez)+'</td></tr>'
       +'<tr class="sum"><td>Celkem od 1. měsíce</td><td class="n">'+K(r.novy1)+'</td></tr>'
       +'<tr class="fade"><td>Po splacení úvěru NZÚ (od '+(fin.y1+1)+'. roku)</td><td class="n">'+K(r.novy2)+'</td></tr>'
       +'</table></div>'
@@ -4723,19 +4829,22 @@ function exportFoXlsx(){
   S('A12','Úrok banky (% p.a.)',ST.pLbl);Nn('B12',fin.urok,null,ST.pVal);
   S('A13','Splatnost banky (roky)',ST.pLbl);Nn('B13',fin.bankYrs,null,ST.pVal);
   S('A14','Splátka banka (Kč/měs)',ST.pLbl);Ff('B14','IF(B11<=0,0,IF(B12=0,B11/(B13*12),PMT(B12/100/12,B13*12,-B11)))',M,ST.pValF);
-  if(fin.rezMode==='pct'){S('A15','Rezerva FO (% ze splátek)',ST.pLbl);Nn('B15',fin.rezPct,null,ST.pVal);}
+  if(fin.rezMode==='pct'){S('A15','Rezerva FO – '+fin.banka+': '+fin.bankaVzorec,ST.pLbl);
+    // dělitel 0,85 (ČSOB) nebo násobitel 1,15 (ČS) – dvě desetinná místa,
+    // jinak by formát #,##0 ukázal „1" a buňka by byla matoucí
+    Nn('B15',fin.bankaKod==='csob'?0.85:1.15,'0.00',ST.pVal);}
   else{S('A15','Rezerva FO celkem (Kč/měs)',ST.pLbl);Nn('B15',fin.rez,M,ST.pVal);}
   S('A16','Současný FO celkem (Kč/měs)',ST.pLbl);Nn('B16',fin.souc,M,ST.pVal);
   S('A17','Úspora na vytápění (Kč/měs)',ST.pLbl);Nn('B17',fin.uspora,M,ST.pVal);
   var hr=19; // o řádek níž – nad tabulkou zůstane mezera po parametrech (A5:B17)
   var heads=['Byt','Vlastník','Podíl','%','Náklad společ.'];
   ex.forEach(function(e){heads.push(e.name+(e.sup===false?' (banka)':' (NZÚ)'));});
-  heads.push('Σ Vícenáklady','− Fond oprav','− Dotace','Nízkopř. dotace','− Vklad','Zbytek podpor. (NZÚ)','Zbytek nepodpor. (banka)','Zbytek celkem','Podíl NZÚ','Jistina NZÚ 0 %','Jistina banka','Spl. NZÚ 0 %','Spl. banka','Rezerva','FO 1.–'+fin.y1+'. rok','FO '+(fin.y1+1)+'.–'+fin.y2+'. rok','Současný FO','Úspora na byt/měs','Navýšení','Z vlastní peněženky');
+  heads.push('Σ Vícenáklady','− Fond oprav','− Dotace','Nízkopř. dotace','− Vklad','Zbytek podpor. (NZÚ)','Zbytek nepodpor. (banka)','Zbytek celkem','Podíl NZÚ','Jistina NZÚ 0 %','Jistina banka','Spl. NZÚ 0 %','Spl. banka','Základ rezervy','Rezerva','FO 1.–'+fin.y1+'. rok','FO '+(fin.y1+1)+'.–'+fin.y2+'. rok','Současný FO','Úspora na byt/měs','Navýšení','Z vlastní peněženky');
   heads.forEach(function(t,i){
     var un=(i>=5&&i<5+nE&&ex[i-5].sup===false);
     S(colL(i)+hr,t,un?ST.thUn:ST.th);
   });
-  var iExS=5+nE,iFO=6+nE,iDot=7+nE,iNiz=8+nE,iVkl=9+nE,iPn=10+nE,iNn=11+nE,iZby=12+nE,iSh=13+nE,iJN=14+nE,iBk=15+nE,iSN=16+nE,iSB=17+nE,iRez=18+nE,iF1=19+nE,iF2=20+nE,iSc=21+nE,iUv=22+nE,iNv=23+nE,iPz=24+nE;
+  var iExS=5+nE,iFO=6+nE,iDot=7+nE,iNiz=8+nE,iVkl=9+nE,iPn=10+nE,iNn=11+nE,iZby=12+nE,iSh=13+nE,iJN=14+nE,iBk=15+nE,iSN=16+nE,iSB=17+nE,iRzB=18+nE,iRez=19+nE,iF1=20+nE,iF2=21+nE,iSc=22+nE,iUv=23+nE,iNv=24+nE,iPz=25+nE;
   var eligC=[],unC=[];
   ex.forEach(function(e,j){(e.sup===false?unC:eligC).push(colL(5+j));});
   var n=C.rows.length,first=hr+1,last=hr+n,tot=last+1;
@@ -4766,7 +4875,17 @@ function exportFoXlsx(){
     Ff(colL(iBk)+row,'MAX(0,'+colL(iZby)+row+'-'+colL(iJN)+row+')',M,td);
     Ff(colL(iSN)+row,'IF($B$9>0,'+colL(iJN)+row+'/($B$9*12),0)',M,td);
     Ff(colL(iSB)+row,'IF('+colL(iBk)+row+'<=0,0,IF($B$12=0,'+colL(iBk)+row+'/($B$13*12),PMT($B$12/100/12,$B$13*12,-'+colL(iBk)+row+')))',M,td);
-    if(fin.rezMode==='pct')Ff(colL(iRez)+row,'('+colL(iSN)+row+'+'+colL(iSB)+row+')*$B$15/100',M,td);
+    // ZÁKLAD REZERVY = splátka bez osobního vkladu a bez nízkopříjmového bonusu.
+    // Jistina bez nich = zbytek podporovaný + nepodporovaný − jistina NZÚ.
+    var _bk0='MAX(0,'+colL(iPn)+row+'+'+colL(iNn)+row+'-'+colL(iJN)+row+')';
+    var _sb0='IF('+_bk0+'<=0,0,IF($B$12=0,'+_bk0+'/($B$13*12),PMT($B$12/100/12,$B$13*12,-'+_bk0+')))';
+    Ff(colL(iRzB)+row,colL(iSN)+row+'+'+_sb0,M,td);
+    if(fin.rezMode==='pct'){
+      var _sp=colL(iRzB)+row;   // vklad ani bonus rezervu nesnižují
+      // ČSOB: FO = základ/0,85 → rezerva = základ/0,85 − základ
+      // ČS:   FO = základ×1,15 → rezerva = základ×1,15 − základ
+      Ff(colL(iRez)+row,fin.bankaKod==='csob'?(_sp+'/$B$15-'+_sp):(_sp+'*$B$15-'+_sp),M,td);
+    }
     else Ff(colL(iRez)+row,'C'+row+'*$B$15',M,td);
     Ff(colL(iF1)+row,colL(iSN)+row+'+'+colL(iSB)+row+'+'+colL(iRez)+row,M,ST.tdG);
     Ff(colL(iF2)+row,'IF($B$13>$B$9,'+colL(iSB)+row+','+colL(iSN)+row+')+'+colL(iRez)+row,M,td);
@@ -4781,7 +4900,7 @@ function exportFoXlsx(){
   Ff(colL(3)+tot,'C'+tot,'0.00%',ST.tot);
   var sumCols=[4];
   ex.forEach(function(e,j){sumCols.push(5+j);});
-  [iExS,iFO,iDot,iNiz,iVkl,iPn,iNn,iZby,iJN,iBk,iSN,iSB,iRez,iF1,iF2,iSc,iUv,iNv,iPz].forEach(function(ci){sumCols.push(ci);});
+  [iExS,iFO,iDot,iNiz,iVkl,iPn,iNn,iZby,iJN,iBk,iSN,iSB,iRzB,iRez,iF1,iF2,iSc,iUv,iNv,iPz].forEach(function(ci){sumCols.push(ci);});
   sumCols.forEach(function(ci){Ff(colL(ci)+tot,'SUM('+colL(ci)+first+':'+colL(ci)+last+')',M,ST.tot);});
   Ff(colL(iSh)+tot,'SUM('+colL(iSh)+first+':'+colL(iSh)+last+')','0.00%',ST.tot);
   S('A'+(tot+2),'NZÚ 0 % lze čerpat jen na podporovaná opatření – FO a vklady kryjí nejdřív nepodporované vícenáklady. Nízkopříjmová dotace se odečítá výhradně z komerčního úvěru, bezúročný úvěr NZÚ zůstává ve stejné výši. Podíl NZÚ = podpor. zbytek / Σ podpor. Banka kryje zbytek vč. nepodporovaných. FO 1. fáze = obě splátky + rezerva; 2. fáze po splacení kratšího úvěru. Orientační výpočet – IP Polná s.r.o.',ST.note);
