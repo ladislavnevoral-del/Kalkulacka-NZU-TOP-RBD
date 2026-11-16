@@ -6,6 +6,16 @@ z programu **Nová zelená úsporám 2026** a pro rozpočítání fondu oprav na
 Celá aplikace je **jeden soubor `index.html`** – nevyžaduje instalaci, spustí se
 v prohlížeči a funguje i bez připojení k internetu.
 
+## Verze
+
+Aktuální je **verze 106**. Číslo je vidět přímo v aplikaci – na přihlašovací
+obrazovce a jako odznak `v106` v hlavičce – a propisuje se do všech výstupů
+(Word, PDF, Excel, dopisy vlastníkům i do exportu JSON). Obchodník tak pozná,
+že pracuje se starou kopií, i když si soubor přejmenoval.
+
+Číslované kopie `nzu_kalkulacka_<verze>.html` jsou tu k rozesílání obchodníkům;
+`index.html` je vždy totožný s nejvyšším číslem.
+
 ## Spuštění
 
 Otevřete `index.html` dvojklikem, nebo – je-li zapnutý GitHub Pages – přes adresu
